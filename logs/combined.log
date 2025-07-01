@@ -18,3 +18,144 @@
 {"level":"info","message":"Root callback called, forwarding to SMS handler","timestamp":"2025-07-01T19:57:59.955Z"}
 {"date":"2025-07-01 19:48:32","from":"+254719623147","id":"fed2f869-5e07-43e9-8fd8-4c90d3fbdf58","level":"info","linkId":"8a5e6a5c-e158-4610-b32d-c5d193b82baf","message":"Callback payload:","text":"hello","timestamp":"2025-07-01T19:57:59.964Z","to":"15629"}
 {"level":"info","message":"SMS processed for user: User_3147 (+254719623147)","timestamp":"2025-07-01T19:58:00.187Z"}
+{"level":"info","message":"Database connected successfully","timestamp":"2025-07-01T20:24:59.047Z"}
+{"level":"info","message":"Scheduled tasks started","timestamp":"2025-07-01T20:24:59.218Z"}
+{"level":"info","message":"🚀 MedConnect AI Server running on port 3000","timestamp":"2025-07-01T20:24:59.228Z"}
+{"level":"info","message":"Database connected successfully","timestamp":"2025-07-01T20:32:23.616Z"}
+{"level":"info","message":"Scheduled tasks started","timestamp":"2025-07-01T20:32:23.849Z"}
+{"level":"info","message":"🚀 MedConnect AI Server running on port 3000","timestamp":"2025-07-01T20:32:23.862Z"}
+{"level":"info","message":"Database connected successfully","timestamp":"2025-07-01T20:49:27.032Z"}
+{"level":"info","message":"Scheduled tasks started","timestamp":"2025-07-01T20:49:27.710Z"}
+{"level":"info","message":"🚀 MedConnect AI Server running on port 3000","timestamp":"2025-07-01T20:49:27.731Z"}
+{"level":"info","message":"Root callback called - SMS received","timestamp":"2025-07-01T21:03:12.831Z"}
+{"level":"info","message":"SMS Payload:","timestamp":"2025-07-01T21:03:12.832Z"}
+{"level":"info","message":"Sending SMS response to +254719623147: 🏥 MedConnect AI Commands:\n\n💬 CHAT [question] - Ask AI about health\n🩺 SYMPTOMS [description] - Get...","timestamp":"2025-07-01T21:03:13.011Z"}
+{"level":"info","message":"SMS processed successfully for +254719623147","timestamp":"2025-07-01T21:03:13.769Z"}
+{"level":"info","message":"Root callback called - SMS received","timestamp":"2025-07-01T21:03:40.164Z"}
+{"level":"info","message":"SMS Payload:","timestamp":"2025-07-01T21:03:40.188Z"}
+{"level":"info","message":"Sending SMS response to +254719623147: 🏥 MedConnect AI - I didn't understand that.\nTry: HELP for commands, CHAT [question] for AI assistan...","timestamp":"2025-07-01T21:03:40.409Z"}
+{"level":"info","message":"SMS processed successfully for +254719623147","timestamp":"2025-07-01T21:03:41.689Z"}
+{"level":"info","message":"Root delivery report called","timestamp":"2025-07-01T21:04:14.965Z"}
+{"level":"info","message":"Delivery Report Payload:","timestamp":"2025-07-01T21:04:14.966Z"}
+{"level":"error","message":"❌ SMS ATXid_80490723ef7ffb3659c504292ff479f9 delivery failed to +254719623147: DeliveryFailure","timestamp":"2025-07-01T21:04:14.967Z"}
+{"level":"info","message":"Root delivery report called","timestamp":"2025-07-01T21:04:43.337Z"}
+{"level":"info","message":"Delivery Report Payload:","timestamp":"2025-07-01T21:04:43.338Z"}
+{"level":"error","message":"❌ SMS ATXid_b9cf9d147648af43ecb7e9c6ceac9d41 delivery failed to +254719623147: DeliveryFailure","timestamp":"2025-07-01T21:04:43.339Z"}
+{"level":"info","message":"Database connected successfully","timestamp":"2025-07-01T21:29:06.982Z"}
+{"level":"info","message":"Scheduled tasks started","timestamp":"2025-07-01T21:29:07.259Z"}
+{"level":"info","message":"🚀 MedConnect AI Server running on port 3000","timestamp":"2025-07-01T21:29:07.266Z"}
+{"level":"info","message":"🔔 SMS Callback Received","timestamp":"2025-07-01T21:31:29.746Z"}
+{"level":"info","message":"📱 SMS Payload:","timestamp":"2025-07-01T21:31:29.749Z"}
+{"level":"info","message":"📝 Processing SMS from +254719623147: \"HELP\"","timestamp":"2025-07-01T21:31:30.090Z"}
+{"level":"info","message":"📤 Sending response to +254719623147...","timestamp":"2025-07-01T21:31:30.109Z"}
+{"level":"info","message":"✅ SMS response sent successfully to +254719623147","timestamp":"2025-07-01T21:31:31.434Z"}
+{"level":"info","message":"✅ SMS callback processed successfully for +254719623147","timestamp":"2025-07-01T21:31:31.435Z"}
+{"level":"info","message":"🔔 SMS Callback Received","timestamp":"2025-07-01T21:31:42.247Z"}
+{"level":"info","message":"📱 SMS Payload:","timestamp":"2025-07-01T21:31:42.278Z"}
+{"level":"info","message":"📝 Processing SMS from +254719623147: \"1\"","timestamp":"2025-07-01T21:31:42.440Z"}
+{"level":"info","message":"📤 Sending response to +254719623147...","timestamp":"2025-07-01T21:31:42.446Z"}
+{"level":"info","message":"✅ SMS response sent successfully to +254719623147","timestamp":"2025-07-01T21:31:43.383Z"}
+{"level":"info","message":"✅ SMS callback processed successfully for +254719623147","timestamp":"2025-07-01T21:31:43.385Z"}
+{"level":"info","message":"🔔 SMS Callback Received","timestamp":"2025-07-01T21:32:18.520Z"}
+{"level":"info","message":"📱 SMS Payload:","timestamp":"2025-07-01T21:32:18.521Z"}
+{"level":"info","message":"📝 Processing SMS from +254719623147: \"I HAVE SOME HEADACHE AND ALSO GIVE ME SOMESYMPTOMS OF CANCER\"","timestamp":"2025-07-01T21:32:18.672Z"}
+{"level":"info","message":"📤 Sending response to +254719623147...","timestamp":"2025-07-01T21:32:21.171Z"}
+{"level":"info","message":"✅ SMS response sent successfully to +254719623147","timestamp":"2025-07-01T21:32:21.908Z"}
+{"level":"info","message":"✅ SMS callback processed successfully for +254719623147","timestamp":"2025-07-01T21:32:21.909Z"}
+{"level":"info","message":"Root delivery report called","timestamp":"2025-07-01T21:32:33.129Z"}
+{"level":"info","message":"Delivery Report Payload:","timestamp":"2025-07-01T21:32:33.134Z"}
+{"level":"error","message":"❌ SMS ATXid_4bef049bd70fc452c48ce3f805de9eec delivery failed to +254719623147: DeliveryFailure","timestamp":"2025-07-01T21:32:33.139Z"}
+{"level":"info","message":"Root delivery report called","timestamp":"2025-07-01T21:32:45.244Z"}
+{"level":"info","message":"Delivery Report Payload:","timestamp":"2025-07-01T21:32:45.245Z"}
+{"level":"error","message":"❌ SMS ATXid_fa998a84592cfa4fb7a6dc51236b0f92 delivery failed to +254719623147: DeliveryFailure","timestamp":"2025-07-01T21:32:45.246Z"}
+{"level":"info","message":"🔔 SMS Callback Received","timestamp":"2025-07-01T21:32:58.625Z"}
+{"level":"info","message":"📱 SMS Payload:","timestamp":"2025-07-01T21:32:58.626Z"}
+{"level":"info","message":"📝 Processing SMS from +254719623147: \"BOOK\"","timestamp":"2025-07-01T21:32:58.777Z"}
+{"level":"info","message":"📤 Sending response to +254719623147...","timestamp":"2025-07-01T21:33:01.090Z"}
+{"level":"info","message":"✅ SMS response sent successfully to +254719623147","timestamp":"2025-07-01T21:33:01.832Z"}
+{"level":"info","message":"✅ SMS callback processed successfully for +254719623147","timestamp":"2025-07-01T21:33:01.834Z"}
+{"level":"info","message":"Root delivery report called","timestamp":"2025-07-01T21:33:23.889Z"}
+{"level":"info","message":"Delivery Report Payload:","timestamp":"2025-07-01T21:33:23.894Z"}
+{"level":"error","message":"❌ SMS ATXid_ef41b76e53ae54ca25eb1253aa49c483 delivery failed to +254719623147: DeliveryFailure","timestamp":"2025-07-01T21:33:23.895Z"}
+{"level":"info","message":"🔔 SMS Callback Received","timestamp":"2025-07-01T21:33:31.289Z"}
+{"level":"info","message":"📱 SMS Payload:","timestamp":"2025-07-01T21:33:31.290Z"}
+{"level":"info","message":"📝 Processing SMS from +254719623147: \"I WANT YOU TO BOOK FOR ME AN APPOINTMENT\"","timestamp":"2025-07-01T21:33:31.460Z"}
+{"level":"info","message":"📤 Sending response to +254719623147...","timestamp":"2025-07-01T21:33:33.551Z"}
+{"level":"info","message":"✅ SMS response sent successfully to +254719623147","timestamp":"2025-07-01T21:33:34.511Z"}
+{"level":"info","message":"✅ SMS callback processed successfully for +254719623147","timestamp":"2025-07-01T21:33:34.512Z"}
+{"level":"info","message":"Root delivery report called","timestamp":"2025-07-01T21:34:04.634Z"}
+{"level":"info","message":"Delivery Report Payload:","timestamp":"2025-07-01T21:34:04.634Z"}
+{"level":"error","message":"❌ SMS ATXid_4dfde2b3be9d78783eb0621e40f405eb delivery failed to +254719623147: DeliveryFailure","timestamp":"2025-07-01T21:34:04.635Z"}
+{"level":"info","message":"🔔 SMS Callback Received","timestamp":"2025-07-01T21:34:14.196Z"}
+{"level":"info","message":"📱 SMS Payload:","timestamp":"2025-07-01T21:34:14.198Z"}
+{"level":"info","message":"📝 Processing SMS from +254719623147: \"JUST BOOK ANY DOCTOR AVAILABLE I AM HAVING A VEY BAD HEADACHE\"","timestamp":"2025-07-01T21:34:14.351Z"}
+{"level":"info","message":"📤 Sending response to +254719623147...","timestamp":"2025-07-01T21:34:16.863Z"}
+{"level":"info","message":"✅ SMS response sent successfully to +254719623147","timestamp":"2025-07-01T21:34:17.594Z"}
+{"level":"info","message":"✅ SMS callback processed successfully for +254719623147","timestamp":"2025-07-01T21:34:17.596Z"}
+{"level":"info","message":"Root delivery report called","timestamp":"2025-07-01T21:34:37.439Z"}
+{"level":"info","message":"Delivery Report Payload:","timestamp":"2025-07-01T21:34:37.441Z"}
+{"level":"error","message":"❌ SMS ATXid_330a34291bfa4ef575bd5ad65caaae90 delivery failed to +254719623147: DeliveryFailure","timestamp":"2025-07-01T21:34:37.441Z"}
+{"level":"info","message":"🔔 SMS Callback Received","timestamp":"2025-07-01T21:34:50.855Z"}
+{"level":"info","message":"📱 SMS Payload:","timestamp":"2025-07-01T21:34:50.860Z"}
+{"level":"info","message":"📝 Processing SMS from +254719623147: \"BOOK\"","timestamp":"2025-07-01T21:34:51.018Z"}
+{"level":"info","message":"📤 Sending response to +254719623147...","timestamp":"2025-07-01T21:34:53.413Z"}
+{"level":"info","message":"✅ SMS response sent successfully to +254719623147","timestamp":"2025-07-01T21:34:54.004Z"}
+{"level":"info","message":"✅ SMS callback processed successfully for +254719623147","timestamp":"2025-07-01T21:34:54.005Z"}
+{"level":"info","message":"Root delivery report called","timestamp":"2025-07-01T21:35:20.345Z"}
+{"level":"info","message":"Delivery Report Payload:","timestamp":"2025-07-01T21:35:20.346Z"}
+{"level":"error","message":"❌ SMS ATXid_2abaf6109603714d72f1e2131528bf00 delivery failed to +254719623147: DeliveryFailure","timestamp":"2025-07-01T21:35:20.347Z"}
+{"level":"info","message":"Root delivery report called","timestamp":"2025-07-01T21:35:56.084Z"}
+{"level":"info","message":"Delivery Report Payload:","timestamp":"2025-07-01T21:35:56.087Z"}
+{"level":"error","message":"❌ SMS ATXid_1f1430037b83b5e70087a7e18084aa72 delivery failed to +254719623147: DeliveryFailure","timestamp":"2025-07-01T21:35:56.089Z"}
+{"level":"info","message":"🔔 SMS Callback Received","timestamp":"2025-07-01T21:36:12.499Z"}
+{"level":"info","message":"📱 SMS Payload:","timestamp":"2025-07-01T21:36:12.502Z"}
+{"level":"info","message":"👤 New user created: +254719623146","timestamp":"2025-07-01T21:36:12.665Z"}
+{"level":"info","message":"📝 Processing SMS from +254719623146: \"BOOK\"","timestamp":"2025-07-01T21:36:12.747Z"}
+{"level":"info","message":"📤 Sending response to +254719623146...","timestamp":"2025-07-01T21:36:12.834Z"}
+{"level":"info","message":"✅ SMS response sent successfully to +254719623146","timestamp":"2025-07-01T21:36:13.464Z"}
+{"level":"info","message":"✅ SMS callback processed successfully for +254719623146","timestamp":"2025-07-01T21:36:13.465Z"}
+{"level":"info","message":"🔔 SMS Callback Received","timestamp":"2025-07-01T21:36:24.653Z"}
+{"level":"info","message":"📱 SMS Payload:","timestamp":"2025-07-01T21:36:24.654Z"}
+{"level":"info","message":"📝 Processing SMS from +254719623146: \"2\"","timestamp":"2025-07-01T21:36:24.806Z"}
+{"level":"info","message":"📤 Sending response to +254719623146...","timestamp":"2025-07-01T21:36:24.808Z"}
+{"level":"info","message":"✅ SMS response sent successfully to +254719623146","timestamp":"2025-07-01T21:36:25.297Z"}
+{"level":"info","message":"✅ SMS callback processed successfully for +254719623146","timestamp":"2025-07-01T21:36:25.297Z"}
+{"level":"info","message":"🔔 SMS Callback Received","timestamp":"2025-07-01T21:36:38.815Z"}
+{"level":"info","message":"📱 SMS Payload:","timestamp":"2025-07-01T21:36:38.815Z"}
+{"level":"info","message":"📝 Processing SMS from +254719623146: \"5\"","timestamp":"2025-07-01T21:36:38.964Z"}
+{"level":"info","message":"📤 Sending response to +254719623146...","timestamp":"2025-07-01T21:36:38.966Z"}
+{"level":"info","message":"✅ SMS response sent successfully to +254719623146","timestamp":"2025-07-01T21:36:39.603Z"}
+{"level":"info","message":"✅ SMS callback processed successfully for +254719623146","timestamp":"2025-07-01T21:36:39.605Z"}
+{"level":"info","message":"🔔 SMS Callback Received","timestamp":"2025-07-01T21:36:52.332Z"}
+{"level":"info","message":"📱 SMS Payload:","timestamp":"2025-07-01T21:36:52.336Z"}
+{"level":"info","message":"📝 Processing SMS from +254719623146: \"5\"","timestamp":"2025-07-01T21:36:52.486Z"}
+{"level":"info","message":"📤 Sending response to +254719623146...","timestamp":"2025-07-01T21:36:52.489Z"}
+{"level":"info","message":"✅ SMS response sent successfully to +254719623146","timestamp":"2025-07-01T21:36:53.108Z"}
+{"level":"info","message":"✅ SMS callback processed successfully for +254719623146","timestamp":"2025-07-01T21:36:53.109Z"}
+{"level":"info","message":"🔔 SMS Callback Received","timestamp":"2025-07-01T21:37:09.612Z"}
+{"level":"info","message":"📱 SMS Payload:","timestamp":"2025-07-01T21:37:09.618Z"}
+{"level":"info","message":"📝 Processing SMS from +254719623146: \"1\"","timestamp":"2025-07-01T21:37:09.789Z"}
+{"level":"info","message":"📤 Sending response to +254719623146...","timestamp":"2025-07-01T21:37:09.881Z"}
+{"level":"info","message":"Root delivery report called","timestamp":"2025-07-01T21:37:15.853Z"}
+{"level":"info","message":"Delivery Report Payload:","timestamp":"2025-07-01T21:37:15.854Z"}
+{"level":"error","message":"❌ SMS ATXid_42d971758db107d44b4b632724ae84e9 delivery failed to +254719623146: DeliveryFailure","timestamp":"2025-07-01T21:37:15.855Z"}
+{"level":"info","message":"Root delivery report called","timestamp":"2025-07-01T21:37:26.911Z"}
+{"level":"info","message":"Delivery Report Payload:","timestamp":"2025-07-01T21:37:26.939Z"}
+{"level":"error","message":"❌ SMS ATXid_b2704313a0db7b6a20867150ce281a91 delivery failed to +254719623146: DeliveryFailure","timestamp":"2025-07-01T21:37:26.943Z"}
+{"level":"error","message":"❌ Failed to send SMS response: read ECONNRESET","timestamp":"2025-07-01T21:37:41.748Z"}
+{"level":"info","message":"✅ SMS callback processed successfully for +254719623146","timestamp":"2025-07-01T21:37:41.750Z"}
+{"level":"info","message":"Root delivery report called","timestamp":"2025-07-01T21:37:42.271Z"}
+{"level":"info","message":"Delivery Report Payload:","timestamp":"2025-07-01T21:37:42.272Z"}
+{"level":"error","message":"❌ SMS ATXid_cd75c404609ba6654eb862202017a765 delivery failed to +254719623146: DeliveryFailure","timestamp":"2025-07-01T21:37:42.272Z"}
+{"level":"info","message":"🔔 SMS Callback Received","timestamp":"2025-07-01T21:37:52.339Z"}
+{"level":"info","message":"📱 SMS Payload:","timestamp":"2025-07-01T21:37:52.340Z"}
+{"level":"info","message":"📝 Processing SMS from +254719623146: \"1\"","timestamp":"2025-07-01T21:37:52.502Z"}
+{"level":"info","message":"📤 Sending response to +254719623146...","timestamp":"2025-07-01T21:37:52.504Z"}
+{"level":"info","message":"✅ SMS response sent successfully to +254719623146","timestamp":"2025-07-01T21:37:53.219Z"}
+{"level":"info","message":"✅ SMS callback processed successfully for +254719623146","timestamp":"2025-07-01T21:37:53.221Z"}
+{"level":"info","message":"Root delivery report called","timestamp":"2025-07-01T21:37:54.292Z"}
+{"level":"info","message":"Delivery Report Payload:","timestamp":"2025-07-01T21:37:54.292Z"}
+{"level":"error","message":"❌ SMS ATXid_a3e48d98452d38a35cac17e75c8f4535 delivery failed to +254719623146: DeliveryFailure","timestamp":"2025-07-01T21:37:54.293Z"}
+{"level":"info","message":"Root delivery report called","timestamp":"2025-07-01T21:38:56.381Z"}
+{"level":"info","message":"Delivery Report Payload:","timestamp":"2025-07-01T21:38:56.386Z"}
+{"level":"error","message":"❌ SMS ATXid_131a2e83a937a85f8e3322112efaeb85 delivery failed to +254719623146: DeliveryFailure","timestamp":"2025-07-01T21:38:56.387Z"}

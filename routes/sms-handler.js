@@ -1,8 +1,7 @@
-const express = require('express');
-const router = express.Router();
 const { User, HealthSession, Doctor, Appointment } = require('../services/database');
 const atService = require('../services/africasTalking');
 const aiService = require('../services/ai');
+const { processConversationalSMS } = require('./conversational-sms');
 const winston = require('winston');
 
 const logger = winston.createLogger({
@@ -11,269 +10,9 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()]
 });
 
-// Handle incoming SMS callback from Africa's Talking
-router.post('/callback', async (req, res) => {
-  try {
-    const { from, text, to, id, date, linkId, networkCode } = req.body;
-    
-    logger.info(`SMS received from ${from}: ${text}`);
-    logger.info('Full SMS payload:', req.body);
-    
-    const phoneNumber = atService.formatPhoneNumber(from);
-    let user = await User.findOne({ phoneNumber });
-    
-    if (!user) {
-      user = new User({
-        phoneNumber,
-        name: `User_${from.slice(-4)}`,
-        createdAt: new Date()
-      });
-      await user.save();
-      
-      // Send welcome message
-      await atService.sendWelcomeMessage(phoneNumber, user.name);
-    }
-    
-    // Update last activity
-    user.lastActivity = new Date();
-    await user.save();
-    
-    // Process SMS commands
-    const response = await processSMSCommand(text.trim().toLowerCase(), user);
-    
-    if (response) {
-      await atService.sendSMS(phoneNumber, response);
-    }
-    
-    // Return success response for Africa's Talking
-    res.status(200).json({ 
-      status: 'success',
-      message: 'SMS processed successfully' 
-    });
-    
-  } catch (error) {
-    logger.error('SMS handling error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      message: error.message 
-    });
-  }
-});
-
-// Alternative callback endpoint (sometimes Africa's Talking uses this)
-router.post('/incoming', async (req, res) => {
-  return router.post('/callback')(req, res);
-});
-
-// Test endpoint to verify callback is working
-router.get('/test-callback', (req, res) => {
-  res.json({
-    status: 'success',
-    message: 'SMS callback endpoint is working',
-    timestamp: new Date().toISOString(),
-    endpoints: [
-      'POST /sms/callback - Main SMS callback',
-      'POST /sms/incoming - Alternative callback',
-      'GET /sms/test-callback - This test endpoint'
-    ]
-  });
-});
-
-// Webhook verification for Africa's Talking
-router.get('/callback', (req, res) => {
-  res.status(200).send('SMS Callback endpoint is ready');
-});
-
-// SMS Delivery Report Callback
-router.post('/delivery-report', async (req, res) => {
-  try {
-    const { id, status, phoneNumber, networkCode, failureReason, retryCount, cost } = req.body;
-    
-    logger.info('SMS Delivery Report received:', JSON.stringify(req.body, null, 2));
-    
-    // Log delivery status
-    logger.info(`SMS Delivery: ${id} to ${phoneNumber} - Status: ${status}`);
-    
-    if (status === 'Success') {
-      logger.info(`✅ SMS delivered successfully to ${phoneNumber} (Cost: ${cost})`);
-    } else if (status === 'Failed') {
-      logger.error(`❌ SMS delivery failed to ${phoneNumber}: ${failureReason}`);
-    } else {
-      logger.info(`📤 SMS status for ${phoneNumber}: ${status}`);
-    }
-    
-    // You can store delivery reports in database if needed
-    // const deliveryReport = new DeliveryReport({
-    //   messageId: id,
-    //   phoneNumber,
-    //   status,
-    //   networkCode,
-    //   failureReason,
-    //   retryCount,
-    //   cost,
-    //   timestamp: new Date()
-    // });
-    // await deliveryReport.save();
-    
-    res.status(200).json({ 
-      status: 'success',
-      message: 'Delivery report received',
-      messageId: id,
-      deliveryStatus: status
-    });
-    
-  } catch (error) {
-    logger.error('Delivery report processing error:', error);
-    res.status(500).json({ 
-      error: 'Processing failed',
-      message: error.message 
-    });
-  }
-});
-
-// Alternative delivery report endpoint
-router.post('/delivery', async (req, res) => {
-  // Forward to main delivery report handler
-  return router.handle(Object.assign(req, { url: '/delivery-report', originalUrl: '/sms/delivery-report' }), res);
-});
-
 async function processSMSCommand(text, user) {
-  const words = text.split(' ');
-  const command = words[0];
-  
-  switch (command) {
-    case 'help':
-      return `🏥 MedConnect AI Commands:
-
-💬 CHAT [question] - Ask AI about health
-🩺 SYMPTOMS [description] - Get health analysis  
-🆘 EMERGENCY [type] - Report emergency
-
-📅 APPOINTMENTS:
-BOOK [doctor] [date] [time] - Book appointment
-APPOINTMENTS - View your bookings
-DOCTORS - See available doctors
-CANCEL [ID] - Cancel appointment
-CONFIRM [ID] - Confirm appointment
-
-👤 PROFILE - View your info
-TIP - Get health tip
-📞 Use *384*57000# for full menu`;
-
-    case 'chat':
-      if (words.length < 2) {
-        return `🤖 AI Chat: Ask me any health question!
-Example: CHAT I have fever and headache
-Or just describe your symptoms directly.`;
-      }
-      
-      const question = words.slice(1).join(' ');
-      return await processAIChatSMS(question, user);
-      
-    case 'symptoms':
-      if (words.length < 2) {
-        return 'Please describe your symptoms. Example: SYMPTOMS fever headache cough';
-      }
-      
-      const symptoms = words.slice(1);
-      const analysis = await aiService.analyzeSymptoms(symptoms, {
-        age: user.age,
-        gender: user.gender,
-        medicalHistory: user.medicalHistory
-      });
-      
-      if (analysis.success) {
-        const { condition, urgency, recommendations } = analysis.analysis;
-        
-        // Save health session
-        const healthSession = new HealthSession({
-          sessionId: `SMS_${Date.now()}`,
-          phoneNumber: user.phoneNumber,
-          sessionType: 'sms',
-          symptoms: symptoms,
-          aiDiagnosis: analysis.analysis,
-          status: 'completed'
-        });
-        await healthSession.save();
-        
-        return `🔬 MedConnect AI Analysis:
-Condition: ${condition}
-Urgency: ${urgency.toUpperCase()}
-${recommendations[0]}
-${urgency === 'high' || urgency === 'critical' ? 
-  'SEEK IMMEDIATE MEDICAL ATTENTION!' : 
-  'Consider consulting a healthcare provider'}`;
-      }
-      
-      return 'Unable to analyze symptoms. Please use *384*57000# for detailed health check.';
-      
-    case 'emergency':
-      return `🚨 EMERGENCY ASSISTANCE ACTIVATED!
-📞 Emergency Contacts:
-• Ambulance: 911
-• Police: 999
-• Fire: 998
-Use *384*57000# for detailed emergency assistance`;
-      
-    case 'tip':
-      const tipResponse = await aiService.generateHealthTip('general');
-      return `💡 MedConnect AI Health Tip:
-${tipResponse.tip}
-Use *384*57000# for more health guidance`;
-      
-    case 'profile':
-      return `👤 Your Profile:
-Name: ${user.name}
-Age: ${user.age || 'Not set'}
-Gender: ${user.gender || 'Not set'}
-Location: ${user.location || 'Not set'}
-To update: UPDATE [field] [value]`;
-      
-    case 'update':
-      return await handleProfileUpdate(words.slice(1), user);
-      
-    case 'book':
-      return await handleSMSBooking(words.slice(1), user);
-      
-    case 'appointments':
-    case 'apt':
-      return await handleViewAppointments(user);
-      
-    case 'cancel':
-      return await handleCancelAppointment(words.slice(1), user);
-      
-    case 'reschedule':
-      return await handleRescheduleAppointment(words.slice(1), user);
-      
-    case 'doctors':
-      return await handleListDoctors();
-      
-    case 'confirm':
-      return await handleConfirmAppointment(words.slice(1), user);
-      
-    default:
-      // Try to analyze as symptoms or AI chat if not a command
-      if (text.length > 10) {
-        // Check if it looks like a health question
-        const healthKeywords = ['pain', 'hurt', 'sick', 'fever', 'headache', 'cough', 'dizzy', 'nausea', 'tired', 'ache', 'sore', 'swollen', 'bleeding', 'rash', 'what', 'how', 'why', 'should', 'can', 'help', 'advice'];
-        const hasHealthKeyword = healthKeywords.some(keyword => text.includes(keyword));
-        
-        if (hasHealthKeyword) {
-          // Treat as AI chat question
-          return await processAIChatSMS(text, user);
-        } else {
-          // Treat as symptoms
-          const symptoms = text.split(' ').filter(word => word.length > 2);
-          if (symptoms.length > 0) {
-            return await processSMSCommand(`symptoms ${symptoms.join(' ')}`, user);
-          }
-        }
-      }
-      
-      return `🏥 MedConnect AI - I didn't understand that.
-Try: HELP for commands, CHAT [question] for AI assistance
-Or dial *384*57000# for full service`;
-  }
+  // Use the new conversational SMS system for all messages
+  return await processConversationalSMS(text, user);
 }
 
 async function handleProfileUpdate(params, user) {
@@ -314,34 +53,6 @@ async function handleProfileUpdate(params, user) {
   return `✅ Profile updated successfully!
 ${field}: ${value}`;
 }
-
-// Send SMS endpoint
-router.post('/send', async (req, res) => {
-  try {
-    const { to, message, from } = req.body;
-    
-    const result = await atService.sendSMS(to, message, from);
-    
-    res.json(result);
-  } catch (error) {
-    logger.error('SMS send error:', error);
-    res.status(500).json({ error: 'Failed to send SMS' });
-  }
-});
-
-// Send bulk SMS endpoint
-router.post('/send-bulk', async (req, res) => {
-  try {
-    const { recipients, message } = req.body;
-    
-    const result = await atService.sendBulkSMS(recipients, message);
-    
-    res.json(result);
-  } catch (error) {
-    logger.error('Bulk SMS send error:', error);
-    res.status(500).json({ error: 'Failed to send bulk SMS' });
-  }
-});
 
 // AI Chat SMS processing function
 async function processAIChatSMS(question, user) {
@@ -642,4 +353,14 @@ See you there!`;
   }
 }
 
-module.exports = router;
+module.exports = {
+  processSMSCommand,
+  handleProfileUpdate,
+  processAIChatSMS,
+  handleSMSBooking,
+  handleViewAppointments,
+  handleListDoctors,
+  handleCancelAppointment,
+  handleRescheduleAppointment,
+  handleConfirmAppointment
+};

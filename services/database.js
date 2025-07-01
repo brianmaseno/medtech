@@ -1,3 +1,4 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 const winston = require('winston');
 
@@ -145,6 +146,20 @@ const appointmentSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
+// SMS Delivery Report Schema (for tracking delivery status)
+const deliveryReportSchema = new mongoose.Schema({
+  messageId: { type: String, required: true, unique: true },
+  phoneNumber: { type: String, required: true },
+  status: { type: String, required: true }, // Success, Failed, Sent, etc.
+  networkCode: { type: String },
+  failureReason: { type: String },
+  retryCount: { type: Number, default: 0 },
+  cost: { type: String },
+  timestamp: { type: Date, default: Date.now },
+  relatedSession: { type: String }, // Link to health session if applicable
+  messageType: { type: String, enum: ['appointment', 'health', 'general'], default: 'general' }
+});
+
 // Health Facility Schema
 const facilitySchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -196,6 +211,7 @@ const HealthSession = mongoose.model('HealthSession', healthSessionSchema);
 const Emergency = mongoose.model('Emergency', emergencySchema);
 const Doctor = mongoose.model('Doctor', doctorSchema);
 const Appointment = mongoose.model('Appointment', appointmentSchema);
+const DeliveryReport = mongoose.model('DeliveryReport', deliveryReportSchema);
 const Facility = mongoose.model('Facility', facilitySchema);
 const Analytics = mongoose.model('Analytics', analyticsSchema);
 
@@ -415,6 +431,7 @@ module.exports = {
   Emergency,
   Doctor,
   Appointment,
+  DeliveryReport,
   Facility,
   Analytics
 };

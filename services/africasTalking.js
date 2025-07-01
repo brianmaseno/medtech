@@ -1,3 +1,4 @@
+require('dotenv').config();
 const AfricasTalking = require('africastalking');
 const winston = require('winston');
 
@@ -26,18 +27,34 @@ class ATService {
         message: message,
       };
       
-      if (from) {
+      // Use shortcode for sandbox environment
+      if (process.env.AFRICASTALKING_ENVIRONMENT === 'sandbox') {
+        options.from = process.env.AFRICASTALKING_SHORTCODE || '15629';
+      } else if (from) {
         options.from = from;
       }
 
+      logger.info(`Sending SMS to ${to} from ${options.from}: ${message.substring(0, 50)}...`);
+
       const result = await this.sms.send(options);
       
-      logger.info(`SMS sent to ${to}: ${message.substring(0, 50)}...`);
+      logger.info(`SMS API Response:`, JSON.stringify(result, null, 2));
+      
+      // Check if SMS was accepted
+      if (result.SMSMessageData && result.SMSMessageData.Recipients) {
+        const recipient = result.SMSMessageData.Recipients[0];
+        if (recipient.statusCode === 101) {
+          logger.info(`✅ SMS accepted for delivery to ${to}`);
+        } else {
+          logger.error(`❌ SMS rejected for ${to}: ${recipient.status}`);
+        }
+      }
       
       return {
         success: true,
         result: result,
-        messageId: result.SMSMessageData?.Recipients?.[0]?.messageId
+        messageId: result.SMSMessageData?.Recipients?.[0]?.messageId,
+        status: result.SMSMessageData?.Recipients?.[0]?.status
       };
     } catch (error) {
       logger.error('Error sending SMS:', error);

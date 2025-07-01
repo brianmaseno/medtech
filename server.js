@@ -81,23 +81,24 @@ app.get('/', (req, res) => {
 
 // Main callback endpoint for Africa's Talking SMS
 app.post('/callback', async (req, res) => {
-  logger.info('Root callback called, forwarding to SMS handler');
-  logger.info('Callback payload:', req.body);
+  logger.info('🔔 SMS Callback Received');
+  logger.info('📱 SMS Payload:', JSON.stringify(req.body, null, 2));
   
   try {
-    // Forward the request to the SMS callback
     const { from, text, to, id, date, linkId, networkCode } = req.body;
     
-    // Create a new request object for the SMS handler
-    const smsReq = {
-      ...req,
-      body: req.body,
-      url: '/sms/callback',
-      originalUrl: '/sms/callback'
-    };
+    if (!from || !text) {
+      logger.error('❌ Invalid SMS payload - missing required fields');
+      return res.status(400).json({ 
+        error: 'Invalid payload',
+        message: 'Missing required fields: from, text',
+        received: { from, text, to, id }
+      });
+    }
     
-    // Import and call SMS handler directly
-    const { User, HealthSession, Doctor, Appointment } = require('./services/database');
+    // Import SMS processing function
+    const { processSMSCommand } = require('./routes/sms-handler');
+    const { User } = require('./services/database');
     const atService = require('./services/africasTalking');
     
     const phoneNumber = atService.formatPhoneNumber(from);
@@ -106,31 +107,53 @@ app.post('/callback', async (req, res) => {
     if (!user) {
       user = new User({
         phoneNumber,
-        name: `User_${from.slice(-4)}`,
+        name: `${from.slice(-4)}`, // Use last 4 digits as name initially
         createdAt: new Date()
       });
       await user.save();
-      
-      // Send welcome message
-      await atService.sendWelcomeMessage(phoneNumber, user.name);
+      logger.info(`👤 New user created: ${phoneNumber}`);
     }
     
     // Update last activity
     user.lastActivity = new Date();
     await user.save();
     
-    logger.info(`SMS processed for user: ${user.name} (${phoneNumber})`);
+    logger.info(`📝 Processing SMS from ${phoneNumber}: "${text}"`);
     
+    // Process SMS command and get response
+    const response = await processSMSCommand(text.trim(), user);
+    
+    if (response) {
+      logger.info(`📤 Sending response to ${phoneNumber}...`);
+      
+      // Send SMS response
+      const smsResult = await atService.sendSMS(phoneNumber, response);
+      
+      if (smsResult.success) {
+        logger.info(`✅ SMS response sent successfully to ${phoneNumber}`);
+      } else {
+        logger.error(`❌ Failed to send SMS response: ${smsResult.error}`);
+      }
+    }
+    
+    logger.info(`✅ SMS callback processed successfully for ${phoneNumber}`);
+    
+    // Return success response to Africa's Talking
     res.status(200).json({ 
       status: 'success',
-      message: 'SMS received and processed' 
+      message: 'SMS received and processed',
+      from: phoneNumber,
+      text: text.substring(0, 50) + (text.length > 50 ? '...' : ''),
+      responseLength: response ? response.length : 0,
+      timestamp: new Date().toISOString()
     });
     
   } catch (error) {
-    logger.error('Callback processing error:', error);
+    logger.error('🚨 SMS Callback processing error:', error);
     res.status(500).json({ 
       error: 'Processing failed',
-      message: error.message 
+      message: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 });
@@ -141,6 +164,51 @@ app.get('/callback', (req, res) => {
     status: 'success',
     message: 'MedConnect AI SMS Callback is ready',
     timestamp: new Date().toISOString()
+  });
+});
+
+// SMS Delivery Report Callback
+app.post('/delivery-report', async (req, res) => {
+  logger.info('Root delivery report called');
+  logger.info('Delivery Report Payload:', JSON.stringify(req.body, null, 2));
+  
+  try {
+    const { id, status, phoneNumber, networkCode, failureReason, retryCount, cost } = req.body;
+    
+    // Log delivery status with detailed information
+    if (status === 'Success') {
+      logger.info(`✅ SMS ${id} delivered successfully to ${phoneNumber} (Cost: ${cost || 'N/A'})`);
+    } else if (status === 'Failed') {
+      logger.error(`❌ SMS ${id} delivery failed to ${phoneNumber}: ${failureReason || 'Unknown reason'}`);
+    } else {
+      logger.info(`📤 SMS ${id} status for ${phoneNumber}: ${status}`);
+    }
+    
+    res.status(200).json({ 
+      status: 'success',
+      message: 'Delivery report processed',
+      messageId: id,
+      phoneNumber: phoneNumber,
+      deliveryStatus: status,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    logger.error('Delivery report processing error:', error);
+    res.status(500).json({ 
+      error: 'Processing failed',
+      message: error.message 
+    });
+  }
+});
+
+// GET delivery report for verification
+app.get('/delivery-report', (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    message: 'MedConnect AI SMS Delivery Report endpoint is ready',
+    timestamp: new Date().toISOString(),
+    info: 'This endpoint receives SMS delivery reports from Africa\'s Talking'
   });
 });
 
