@@ -13,3 +13,10 @@
 {"level":"error","message":"❌ SMS ATXid_cd75c404609ba6654eb862202017a765 delivery failed to +254719623146: DeliveryFailure","timestamp":"2025-07-01T21:37:42.272Z"}
 {"level":"error","message":"❌ SMS ATXid_a3e48d98452d38a35cac17e75c8f4535 delivery failed to +254719623146: DeliveryFailure","timestamp":"2025-07-01T21:37:54.293Z"}
 {"level":"error","message":"❌ SMS ATXid_131a2e83a937a85f8e3322112efaeb85 delivery failed to +254719623146: DeliveryFailure","timestamp":"2025-07-01T21:38:56.387Z"}
+{"level":"error","message":"❌ SMS ATXid_1d6f27c6cbbc65ab183c671ec16ab916 delivery failed to +254719623147: DeliveryFailure","timestamp":"2025-07-01T21:58:35.474Z"}
+{"level":"error","message":"❌ SMS ATXid_f200dd7b4a9a91cf76f6c2a7c9cd50d5 delivery failed to +254719623147: DeliveryFailure","timestamp":"2025-07-01T21:58:46.596Z"}
+{"level":"error","message":"❌ SMS ATXid_54571c222d758c4ff923867ec6d4bb14 delivery failed to +254719623147: DeliveryFailure","timestamp":"2025-07-01T21:58:57.817Z"}
+{"level":"error","message":"❌ SMS ATXid_acd975d06c8888ce9c83f038f1fed250 delivery failed to +254719623147: DeliveryFailure","timestamp":"2025-07-01T21:59:08.968Z"}
+{"level":"error","message":"❌ SMS ATXid_e0aa1c26e9f8f0e6beb9fa6c600627d5 delivery failed to +254719623147: DeliveryFailure","timestamp":"2025-07-01T21:59:17.213Z"}
+{"level":"error","message":"❌ SMS ATXid_b53adadb8095f67c2d1c34978d0b0481 delivery failed to +254719623147: DeliveryFailure","timestamp":"2025-07-01T21:59:41.993Z"}
+{"level":"error","message":"❌ SMS ATXid_5c04fb95b13ae70ca6fb72800fc434f3 delivery failed to +254719623147: DeliveryFailure","timestamp":"2025-07-01T22:00:15.527Z"}
