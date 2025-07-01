@@ -486,29 +486,29 @@ async function confirmBooking(user, data) {
     
     await appointment.save();
     
+    // Log successful appointment creation
+    logger.info(`✅ APPOINTMENT CREATED: ${appointmentId} for ${user.phoneNumber}`);
+    logger.info(`📋 Details: Dr. ${selectedDoctor.name}, ${selectedDate.toLocaleDateString()}, ${selectedTime}`);
+    
     // Clear conversation state
     conversationManager.clearState(user.phoneNumber);
     
-    return `🎉 **APPOINTMENT CONFIRMED!**
+    // Create a shorter, more reliable confirmation message
+    return `🎉 APPOINTMENT CONFIRMED!
 
-✅ **Booking ID:** ${appointmentId}
-👨‍⚕️ **Doctor:** Dr. ${selectedDoctor.name}
-🏥 **Hospital:** ${selectedDoctor.hospital}
-📅 **Date:** ${selectedDate.toLocaleDateString()}
-⏰ **Time:** ${selectedTime}
-💰 **Fee:** KSh ${selectedDoctor.consultationFee}
-📞 **Doctor's Phone:** ${selectedDoctor.phone}
+✅ ID: ${appointmentId}
+👨‍⚕️ Dr. ${selectedDoctor.name}
+📅 ${selectedDate.toLocaleDateString()}
+⏰ ${selectedTime}
+💰 KSh ${selectedDoctor.consultationFee}
 
-**Important:**
-• Arrive 15 minutes early
-• Bring valid ID
-• Payment due at time of service
+� ${selectedDoctor.hospital}
+📞 ${selectedDoctor.phone}
 
-**Need help?**
-• Type "APPOINTMENTS" to view bookings
-• Type "MENU" for main options
+Arrive 15 mins early with ID.
+Type APPOINTMENTS to view all.
 
-Thank you for choosing MedConnect AI! 🏥💙`;
+MedConnect AI 🏥`;
     
   } catch (error) {
     logger.error('Booking confirmation error:', error);

@@ -126,13 +126,19 @@ app.post('/callback', async (req, res) => {
     if (response) {
       logger.info(`📤 Sending response to ${phoneNumber}...`);
       
-      // Send SMS response
+      // Send SMS response with enhanced error handling for confirmations
       const smsResult = await atService.sendSMS(phoneNumber, response);
       
       if (smsResult.success) {
         logger.info(`✅ SMS response sent successfully to ${phoneNumber}`);
       } else {
         logger.error(`❌ Failed to send SMS response: ${smsResult.error}`);
+        
+        // For appointment confirmations, log the details even if SMS failed
+        if (response.includes('APPOINTMENT CONFIRMED')) {
+          logger.info(`🏥 IMPORTANT: Appointment was created successfully, but confirmation SMS failed to send`);
+          logger.info(`📋 Appointment details were: ${response.substring(0, 200)}...`);
+        }
       }
     }
     

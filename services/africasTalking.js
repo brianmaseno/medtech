@@ -20,7 +20,7 @@ class ATService {
     this.airtime = this.africasTalking.AIRTIME;
   }
 
-  async sendSMS(to, message, from = null) {
+  async sendSMS(to, message, from = null, retries = 2) {
     try {
       const options = {
         to: Array.isArray(to) ? to : [to],
@@ -38,7 +38,8 @@ class ATService {
 
       const result = await this.sms.send(options);
       
-      logger.info(`SMS API Response:`, JSON.stringify(result, null, 2));
+      logger.info(`SMS API Response:`);
+      logger.info(JSON.stringify(result.SMSMessageData?.Recipients || result, null, 2));
       
       // Check if SMS was accepted
       if (result.SMSMessageData && result.SMSMessageData.Recipients) {
@@ -58,6 +59,14 @@ class ATService {
       };
     } catch (error) {
       logger.error('Error sending SMS:', error);
+      
+      // Retry for connection errors
+      if ((error.code === 'ECONNRESET' || error.code === 'ENOTFOUND' || error.message.includes('network')) && retries > 0) {
+        logger.info(`🔄 Retrying SMS send (${retries} attempts remaining)...`);
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+        return this.sendSMS(to, message, from, retries - 1);
+      }
+      
       return {
         success: false,
         error: error.message
