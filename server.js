@@ -79,6 +79,71 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Main callback endpoint for Africa's Talking SMS
+app.post('/callback', async (req, res) => {
+  logger.info('Root callback called, forwarding to SMS handler');
+  logger.info('Callback payload:', req.body);
+  
+  try {
+    // Forward the request to the SMS callback
+    const { from, text, to, id, date, linkId, networkCode } = req.body;
+    
+    // Create a new request object for the SMS handler
+    const smsReq = {
+      ...req,
+      body: req.body,
+      url: '/sms/callback',
+      originalUrl: '/sms/callback'
+    };
+    
+    // Import and call SMS handler directly
+    const { User, HealthSession, Doctor, Appointment } = require('./services/database');
+    const atService = require('./services/africasTalking');
+    
+    const phoneNumber = atService.formatPhoneNumber(from);
+    let user = await User.findOne({ phoneNumber });
+    
+    if (!user) {
+      user = new User({
+        phoneNumber,
+        name: `User_${from.slice(-4)}`,
+        createdAt: new Date()
+      });
+      await user.save();
+      
+      // Send welcome message
+      await atService.sendWelcomeMessage(phoneNumber, user.name);
+    }
+    
+    // Update last activity
+    user.lastActivity = new Date();
+    await user.save();
+    
+    logger.info(`SMS processed for user: ${user.name} (${phoneNumber})`);
+    
+    res.status(200).json({ 
+      status: 'success',
+      message: 'SMS received and processed' 
+    });
+    
+  } catch (error) {
+    logger.error('Callback processing error:', error);
+    res.status(500).json({ 
+      error: 'Processing failed',
+      message: error.message 
+    });
+  }
+});
+
+// GET callback for verification
+app.get('/callback', (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    message: 'MedConnect AI SMS Callback is ready',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   logger.error('Application Error:', err);

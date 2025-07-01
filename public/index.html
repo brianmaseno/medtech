@@ -289,32 +289,200 @@
             text-align: center;
         }
 
-        .chat-demo {
+        .chat-interface {
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border-radius: 20px;
-            padding: 2rem;
+            padding: 0;
             margin: 3rem auto;
-            max-width: 600px;
+            max-width: 700px;
             border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
         }
 
-        .chat-message {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 1rem;
-            border-radius: 15px;
-            margin: 1rem 0;
+        .chat-header {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .ai-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .chat-info h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: white;
+        }
+
+        .status {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #a0d468;
+        }
+
+        .chat-messages {
+            height: 400px;
+            overflow-y: auto;
+            padding: 1.5rem;
             text-align: left;
         }
 
-        .chat-message.user {
-            background: rgba(102, 126, 234, 0.3);
-            margin-left: 2rem;
+        .chat-message {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            align-items: flex-start;
         }
 
-        .chat-message.ai {
-            background: rgba(46, 204, 113, 0.3);
-            margin-right: 2rem;
+        .ai-message {
+            justify-content: flex-start;
+        }
+
+        .user-message {
+            justify-content: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .user-message .message-avatar {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        .message-content {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 1rem;
+            border-radius: 15px;
+            max-width: 80%;
+            line-height: 1.6;
+        }
+
+        .user-message .message-content {
+            background: rgba(102, 126, 234, 0.3);
+        }
+
+        .message-content ul {
+            margin: 0.5rem 0;
+            padding-left: 1rem;
+        }
+
+        .chat-input-container {
+            padding: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        #chatInput {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        #sendButton {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease;
+        }
+
+        #sendButton:hover {
+            transform: scale(1.1);
+        }
+
+        .input-suggestions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .suggestion-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .suggestion-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .access-methods {
+            margin-top: 3rem;
+        }
+
+        .access-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .access-method {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .access-method i {
+            font-size: 2rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .access-method h4 {
+            margin-bottom: 1rem;
+            color: white;
+        }
+
+        .access-method p {
+            margin: 0.5rem 0;
+            color: #bdc3c7;
         }
 
         /* Statistics Section */
@@ -625,59 +793,74 @@
     <section id="ai-chat" class="ai-chat">
         <div class="container">
             <div class="section-title fade-in-up">
-                <h2>🤖 AI Health Assistant</h2>
-                <p>Chat with our AI-powered health assistant through USSD or SMS</p>
+                <h2>🤖 AI Health Assistant Chat</h2>
+                <p>Have a real conversation with our AI health assistant - ask anything about your health!</p>
             </div>
 
-            <div class="chat-demo fade-in-up">
-                <h3 style="margin-bottom: 2rem;">💬 Sample AI Conversation via USSD</h3>
-                
-                <div class="chat-message user">
-                    <strong>📱 You:</strong> *384*57000# → Option 6 (AI Chat)<br>
-                    "I have fever and headache for 2 days"
+            <!-- Live Chat Interface -->
+            <div class="chat-interface fade-in-up">
+                <div class="chat-header">
+                    <div class="ai-avatar">🤖</div>
+                    <div class="chat-info">
+                        <h3>MedConnect AI Assistant</h3>
+                        <p class="status">🟢 Online - Ready to help with your health questions</p>
+                    </div>
                 </div>
                 
-                <div class="chat-message ai">
-                    <strong>🤖 MedConnect AI:</strong> I understand you're experiencing fever and headache for 2 days. Based on your symptoms, this could indicate:
-                    <br><br>
-                    • Common cold or flu<br>
-                    • Possible dehydration<br>
-                    • Stress-related tension<br>
-                    <br>
-                    <strong>Recommendations:</strong><br>
-                    ✅ Rest and stay hydrated<br>
-                    ✅ Take paracetamol if needed<br>
-                    ⚠️ Seek medical care if fever >38.5°C<br>
-                    <br>
-                    Would you like me to find nearby clinics?
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-message ai-message">
+                        <div class="message-avatar">🤖</div>
+                        <div class="message-content">
+                            <p>Hello! I'm your AI health assistant. I can help you with:</p>
+                            <ul>
+                                <li>💊 Health questions and symptoms</li>
+                                <li>🏥 Doctor appointments and bookings</li>
+                                <li>🩺 Medical advice and recommendations</li>
+                                <li>📱 Emergency assistance</li>
+                            </ul>
+                            <p>How can I help you today?</p>
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="chat-message user">
-                    <strong>📱 You:</strong> "Yes, find clinics near me"
-                </div>
-                
-                <div class="chat-message ai">
-                    <strong>🤖 MedConnect AI:</strong> 🏥 Nearby Health Facilities:
-                    <br><br>
-                    1. <strong>Nairobi Hospital</strong><br>
-                    📍 Argwings Kodhek Road<br>
-                    📞 +254202722000<br>
-                    ⏰ 24/7 Emergency<br>
-                    <br>
-                    2. <strong>City Health Clinic</strong><br>
-                    📍 CBD, Nairobi<br>
-                    📞 +254701234567<br>
-                    ⏰ 8AM-6PM<br>
-                    <br>
-                    📱 Detailed info sent via SMS!
+                <div class="chat-input-container">
+                    <div class="chat-input-wrapper">
+                        <input type="text" id="chatInput" placeholder="Type your health question or say 'book appointment'..." maxlength="500">
+                        <button id="sendButton" onclick="sendMessage()">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <div class="input-suggestions">
+                        <button class="suggestion-btn" onclick="sendSuggestion('I have fever and headache')">🤒 Fever & Headache</button>
+                        <button class="suggestion-btn" onclick="sendSuggestion('Book appointment with doctor')">📅 Book Appointment</button>
+                        <button class="suggestion-btn" onclick="sendSuggestion('Find nearest clinic')">🏥 Find Clinic</button>
+                        <button class="suggestion-btn" onclick="sendSuggestion('Emergency help needed')">🚨 Emergency</button>
+                    </div>
                 </div>
             </div>
 
-            <div style="margin-top: 3rem;">
-                <a href="#" class="btn-primary" style="font-size: 1.2rem; padding: 1.2rem 2.5rem;">
-                    <i class="fas fa-comments"></i>
-                    Try AI Chat via USSD: *384*57000#
-                </a>
+            <div class="access-methods" style="margin-top: 3rem;">
+                <h3 style="margin-bottom: 2rem;">💬 Multiple Ways to Chat with Our AI:</h3>
+                <div class="access-grid">
+                    <div class="access-method">
+                        <i class="fas fa-mobile-alt"></i>
+                        <h4>USSD Chat</h4>
+                        <p>Dial <strong>*384*57000#</strong> → Option 6</p>
+                        <p>Chat directly on any phone</p>
+                    </div>
+                    <div class="access-method">
+                        <i class="fas fa-sms"></i>
+                        <h4>SMS Chat</h4>
+                        <p>Send <strong>CHAT [question]</strong></p>
+                        <p>Or just text your symptoms</p>
+                    </div>
+                    <div class="access-method">
+                        <i class="fas fa-globe"></i>
+                        <h4>Web Chat</h4>
+                        <p>Right here on our website</p>
+                        <p>Full conversation experience</p>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -880,6 +1063,91 @@
 Built for Africa's Talking Health-tech Hackathon
 Developer: Brian Mayoga
         `);
+
+        // Chat functionality
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (message) {
+                addMessage(message, 'user');
+                input.value = '';
+                
+                // Simulate AI response (in real app, this would call your AI API)
+                setTimeout(() => {
+                    const aiResponse = generateAIResponse(message);
+                    addMessage(aiResponse, 'ai');
+                }, 1000);
+            }
+        }
+
+        function sendSuggestion(suggestion) {
+            document.getElementById('chatInput').value = suggestion;
+            sendMessage();
+        }
+
+        function addMessage(content, sender) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${sender}-message`;
+            
+            const avatar = sender === 'ai' ? '🤖' : '👤';
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${avatar}</div>
+                <div class="message-content">
+                    <p>${content}</p>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function generateAIResponse(userMessage) {
+            const message = userMessage.toLowerCase();
+            
+            if (message.includes('fever') || message.includes('headache')) {
+                return `I understand you're experiencing fever and headache. This could indicate a common cold, flu, or dehydration. I recommend: 
+                <br>• Rest and stay hydrated
+                <br>• Take paracetamol if needed  
+                <br>• Seek medical care if fever >38.5°C
+                <br><br>Would you like me to help you book an appointment with a doctor?`;
+            } else if (message.includes('book') || message.includes('appointment')) {
+                return `I'd be happy to help you book an appointment! We have several doctors available:
+                <br>• Dr. Sarah Kimani (General Medicine)
+                <br>• Dr. James Ochieng (Pediatrics)  
+                <br>• Dr. Mary Wanjiku (Gynecology)
+                <br><br>For full booking, please dial *384*57000# → Option 3, or send SMS "BOOK [doctor name] [preferred date]"`;
+            } else if (message.includes('emergency')) {
+                return `🚨 For emergencies, dial *384*57000# → Option 2 immediately, or call:
+                <br>• Ambulance: 911
+                <br>• Police: 999
+                <br>• Fire: 998
+                <br><br>If this is a life-threatening emergency, please call emergency services directly!`;
+            } else if (message.includes('clinic') || message.includes('hospital')) {
+                return `🏥 Here are nearby health facilities:
+                <br>• Nairobi Hospital - Argwings Kodhek Road (24/7)
+                <br>• Kenyatta National Hospital - Hospital Rd
+                <br>• Aga Khan Hospital - 3rd Parklands Ave
+                <br><br>For directions and contact info, dial *384*57000# → Option 4`;
+            } else {
+                return `Thank you for your message. I'm here to help with health questions, appointments, and emergencies. 
+                <br><br>You can ask me about:
+                <br>• Symptoms and health concerns
+                <br>• Booking doctor appointments  
+                <br>• Finding nearby clinics
+                <br>• Emergency assistance
+                <br><br>For more detailed help, dial *384*57000# or send SMS commands!`;
+            }
+        }
+
+        // Handle Enter key in chat input
+        document.getElementById('chatInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
     </script>
 </body>
 </html>

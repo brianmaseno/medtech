@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { User, HealthSession } = require('../services/database');
+const { User, HealthSession, Doctor, Appointment } = require('../services/database');
 const atService = require('../services/africasTalking');
 const aiService = require('../services/ai');
 const winston = require('winston');
@@ -11,12 +11,13 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()]
 });
 
-// Handle incoming SMS
+// Handle incoming SMS callback from Africa's Talking
 router.post('/callback', async (req, res) => {
   try {
-    const { from, text, to, id, date } = req.body;
+    const { from, text, to, id, date, linkId, networkCode } = req.body;
     
     logger.info(`SMS received from ${from}: ${text}`);
+    logger.info('Full SMS payload:', req.body);
     
     const phoneNumber = atService.formatPhoneNumber(from);
     let user = await User.findOne({ phoneNumber });
@@ -44,12 +45,43 @@ router.post('/callback', async (req, res) => {
       await atService.sendSMS(phoneNumber, response);
     }
     
-    res.status(200).json({ status: 'success' });
+    // Return success response for Africa's Talking
+    res.status(200).json({ 
+      status: 'success',
+      message: 'SMS processed successfully' 
+    });
     
   } catch (error) {
     logger.error('SMS handling error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
+    });
   }
+});
+
+// Alternative callback endpoint (sometimes Africa's Talking uses this)
+router.post('/incoming', async (req, res) => {
+  return router.post('/callback')(req, res);
+});
+
+// Test endpoint to verify callback is working
+router.get('/test-callback', (req, res) => {
+  res.json({
+    status: 'success',
+    message: 'SMS callback endpoint is working',
+    timestamp: new Date().toISOString(),
+    endpoints: [
+      'POST /sms/callback - Main SMS callback',
+      'POST /sms/incoming - Alternative callback',
+      'GET /sms/test-callback - This test endpoint'
+    ]
+  });
+});
+
+// Webhook verification for Africa's Talking
+router.get('/callback', (req, res) => {
+  res.status(200).send('SMS Callback endpoint is ready');
 });
 
 async function processSMSCommand(text, user) {
@@ -59,14 +91,21 @@ async function processSMSCommand(text, user) {
   switch (command) {
     case 'help':
       return `🏥 MedConnect AI Commands:
-SYMPTOMS [description] - Get health analysis
-CHAT [question] - Ask AI anything about health
-EMERGENCY [type] - Report emergency
-BOOK [doctor] [date] - Book appointment
+
+💬 CHAT [question] - Ask AI about health
+🩺 SYMPTOMS [description] - Get health analysis  
+🆘 EMERGENCY [type] - Report emergency
+
+📅 APPOINTMENTS:
+BOOK [doctor] [date] [time] - Book appointment
+APPOINTMENTS - View your bookings
+DOCTORS - See available doctors
+CANCEL [ID] - Cancel appointment
+CONFIRM [ID] - Confirm appointment
+
+👤 PROFILE - View your info
 TIP - Get health tip
-PROFILE - View your profile
-UPDATE [field] [value] - Update profile
-Use *384*57000# for full menu`;
+📞 Use *384*57000# for full menu`;
 
     case 'chat':
       if (words.length < 2) {
@@ -141,23 +180,23 @@ To update: UPDATE [field] [value]`;
       return await handleProfileUpdate(words.slice(1), user);
       
     case 'book':
-      return `🗓️ Appointment Booking:
-To book an appointment, please use *384*57000# option 3 for detailed booking.
-Or call your preferred facility directly.`;
+      return await handleSMSBooking(words.slice(1), user);
       
-    case 'taken':
-      return `✅ Medication taken confirmed!
-Keep up with your treatment schedule.
-Your health matters! 💊`;
+    case 'appointments':
+    case 'apt':
+      return await handleViewAppointments(user);
       
-    case 'confirm':
-      return `✅ Appointment confirmed!
-We'll send you a reminder before your appointment.
-See you there! 🏥`;
+    case 'cancel':
+      return await handleCancelAppointment(words.slice(1), user);
       
     case 'reschedule':
-      return `📅 To reschedule your appointment:
-Use *384*57000# option 3 or call your healthcare facility directly.`;
+      return await handleRescheduleAppointment(words.slice(1), user);
+      
+    case 'doctors':
+      return await handleListDoctors();
+      
+    case 'confirm':
+      return await handleConfirmAppointment(words.slice(1), user);
       
     default:
       // Try to analyze as symptoms or AI chat if not a command
@@ -317,6 +356,236 @@ async function processAIChatSMS(question, user) {
     logger.error('AI Chat SMS Error:', error);
     
     return `🤖 Sorry, I'm having trouble right now. For health concerns, please visit your nearest clinic or dial *384*57000# for our full service.`;
+  }
+}
+
+// Enhanced SMS Appointment Booking Functions
+async function handleSMSBooking(params, user) {
+  try {
+    if (params.length === 0) {
+      const doctors = await Doctor.find({ isActive: true }).limit(3);
+      let response = `📋 BOOK APPOINTMENT via SMS
+
+Available Doctors:
+`;
+      doctors.forEach((doc, i) => {
+        response += `${i+1}. Dr. ${doc.name} (${doc.specialization}) - KSh ${doc.consultationFee}\n`;
+      });
+      
+      response += `\nTo book:
+BOOK [Doctor Name] [Date] [Time]
+Example: BOOK Sarah Tomorrow 10AM
+
+Or use *384*57000# for interactive booking`;
+      return response;
+    }
+    
+    const doctorName = params[0];
+    const dateStr = params[1] || 'tomorrow';
+    const timeStr = params[2] || '10:00 AM';
+    
+    // Find doctor by name (case insensitive partial match)
+    const doctor = await Doctor.findOne({
+      name: { $regex: doctorName, $options: 'i' },
+      isActive: true
+    });
+    
+    if (!doctor) {
+      return `❌ Doctor "${doctorName}" not found.
+Send "DOCTORS" to see available doctors
+Or use *384*57000# for full booking menu`;
+    }
+    
+    // Parse date (simple parsing for common terms)
+    let appointmentDate = new Date();
+    if (dateStr.toLowerCase().includes('tomorrow')) {
+      appointmentDate.setDate(appointmentDate.getDate() + 1);
+    } else if (dateStr.toLowerCase().includes('today')) {
+      // Today
+    } else if (dateStr.match(/\d+/)) {
+      const dayOffset = parseInt(dateStr.match(/\d+/)[0]);
+      appointmentDate.setDate(appointmentDate.getDate() + dayOffset);
+    } else {
+      appointmentDate.setDate(appointmentDate.getDate() + 1); // Default tomorrow
+    }
+    
+    // Create appointment
+    const appointmentId = `APT_${Date.now()}`;
+    const appointment = new Appointment({
+      appointmentId,
+      patientPhone: user.phoneNumber,
+      patientName: user.name,
+      doctorId: doctor.doctorId,
+      doctorName: doctor.name,
+      specialization: doctor.specialization,
+      appointmentDate,
+      timeSlot: timeStr,
+      consultationFee: doctor.consultationFee,
+      bookedVia: 'sms'
+    });
+    
+    await appointment.save();
+    
+    return `✅ APPOINTMENT BOOKED!
+
+👨‍⚕️ Dr. ${doctor.name}
+🏥 ${doctor.hospital}
+📅 ${appointmentDate.toLocaleDateString()}
+⏰ ${timeStr}
+💰 Fee: KSh ${doctor.consultationFee}
+📞 Doctor: ${doctor.phone}
+
+ID: ${appointmentId}
+Arrive 15 mins early!`;
+    
+  } catch (error) {
+    logger.error('SMS Booking Error:', error);
+    return `❌ Booking failed. Use *384*57000# for assistance.`;
+  }
+}
+
+async function handleViewAppointments(user) {
+  try {
+    const appointments = await Appointment.find({
+      patientPhone: user.phoneNumber,
+      appointmentDate: { $gte: new Date() }
+    }).sort({ appointmentDate: 1 }).limit(3);
+    
+    if (appointments.length === 0) {
+      return `📅 No upcoming appointments.
+Send "BOOK" to schedule one.`;
+    }
+    
+    let response = `📅 YOUR APPOINTMENTS:\n\n`;
+    appointments.forEach((apt, i) => {
+      response += `${i+1}. Dr. ${apt.doctorName}
+📅 ${apt.appointmentDate.toLocaleDateString()}
+⏰ ${apt.timeSlot}
+🆔 ${apt.appointmentId}\n\n`;
+    });
+    
+    response += `Send "CANCEL [ID]" to cancel
+Send "RESCHEDULE [ID]" to reschedule`;
+    
+    return response;
+    
+  } catch (error) {
+    logger.error('View Appointments Error:', error);
+    return `❌ Unable to fetch appointments. Try *384*57000#`;
+  }
+}
+
+async function handleListDoctors() {
+  try {
+    const doctors = await Doctor.find({ isActive: true }).limit(5);
+    
+    let response = `👨‍⚕️ AVAILABLE DOCTORS:\n\n`;
+    doctors.forEach((doc, i) => {
+      response += `${i+1}. Dr. ${doc.name}
+   ${doc.specialization}
+   KSh ${doc.consultationFee}
+   ⭐ ${doc.rating}/5\n\n`;
+    });
+    
+    response += `To book: BOOK [Doctor Name] [Date] [Time]
+Example: BOOK Sarah Tomorrow 2PM`;
+    
+    return response;
+    
+  } catch (error) {
+    logger.error('List Doctors Error:', error);
+    return `❌ Unable to load doctors. Use *384*57000#`;
+  }
+}
+
+async function handleCancelAppointment(params, user) {
+  try {
+    if (params.length === 0) {
+      return `To cancel appointment:
+CANCEL [Appointment ID]
+Send "APPOINTMENTS" to see your IDs`;
+    }
+    
+    const appointmentId = params[0];
+    const appointment = await Appointment.findOne({
+      appointmentId,
+      patientPhone: user.phoneNumber
+    });
+    
+    if (!appointment) {
+      return `❌ Appointment ${appointmentId} not found.
+Send "APPOINTMENTS" to see your bookings`;
+    }
+    
+    appointment.status = 'cancelled';
+    appointment.cancelledAt = new Date();
+    await appointment.save();
+    
+    return `✅ APPOINTMENT CANCELLED
+
+Dr. ${appointment.doctorName}
+📅 ${appointment.appointmentDate.toLocaleDateString()}
+🆔 ${appointmentId}
+
+Cancellation confirmed.`;
+    
+  } catch (error) {
+    logger.error('Cancel Appointment Error:', error);
+    return `❌ Cancellation failed. Call support for help.`;
+  }
+}
+
+async function handleRescheduleAppointment(params, user) {
+  if (params.length === 0) {
+    return `To reschedule:
+RESCHEDULE [Appointment ID] [New Date] [New Time]
+Example: RESCHEDULE APT_123 Tomorrow 3PM
+
+Or use *384*57000# for full options`;
+  }
+  
+  return `📅 Rescheduling feature coming soon!
+For now, please:
+1. Cancel current appointment: CANCEL ${params[0]}
+2. Book new appointment: BOOK [Doctor] [Date] [Time]
+
+Or use *384*57000# for full booking options`;
+}
+
+async function handleConfirmAppointment(params, user) {
+  try {
+    if (params.length === 0) {
+      return `To confirm appointment:
+CONFIRM [Appointment ID]
+Send "APPOINTMENTS" to see your IDs`;
+    }
+    
+    const appointmentId = params[0];
+    const appointment = await Appointment.findOne({
+      appointmentId,
+      patientPhone: user.phoneNumber
+    });
+    
+    if (!appointment) {
+      return `❌ Appointment ${appointmentId} not found.`;
+    }
+    
+    appointment.status = 'confirmed';
+    appointment.confirmedAt = new Date();
+    await appointment.save();
+    
+    return `✅ APPOINTMENT CONFIRMED!
+
+Dr. ${appointment.doctorName}
+📅 ${appointment.appointmentDate.toLocaleDateString()}
+⏰ ${appointment.timeSlot}
+🏥 ${appointment.specialization}
+
+See you there!`;
+    
+  } catch (error) {
+    logger.error('Confirm Appointment Error:', error);
+    return `❌ Confirmation failed. Try again later.`;
   }
 }
 

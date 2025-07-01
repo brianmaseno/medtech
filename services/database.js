@@ -91,6 +91,60 @@ const emergencySchema = new mongoose.Schema({
   resolvedAt: Date
 });
 
+// Doctor Schema
+const doctorSchema = new mongoose.Schema({
+  doctorId: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  specialization: { type: String, required: true },
+  qualification: String,
+  experience: Number, // years
+  hospital: String,
+  location: String,
+  phone: String,
+  email: String,
+  availability: {
+    monday: [String], // time slots like ["09:00", "10:00", "11:00"]
+    tuesday: [String],
+    wednesday: [String],
+    thursday: [String],
+    friday: [String],
+    saturday: [String],
+    sunday: [String]
+  },
+  consultationFee: Number,
+  rating: { type: Number, default: 4.5 },
+  isActive: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+// Appointment Schema
+const appointmentSchema = new mongoose.Schema({
+  appointmentId: { type: String, required: true, unique: true },
+  patientPhone: { type: String, required: true },
+  patientName: String,
+  doctorId: { type: String, required: true },
+  doctorName: String,
+  specialization: String,
+  appointmentDate: { type: Date, required: true },
+  timeSlot: { type: String, required: true }, // "09:00", "10:00", etc.
+  symptoms: String,
+  status: { 
+    type: String, 
+    enum: ['scheduled', 'confirmed', 'completed', 'cancelled', 'rescheduled'], 
+    default: 'scheduled' 
+  },
+  consultationFee: Number,
+  paymentStatus: { 
+    type: String, 
+    enum: ['pending', 'paid', 'failed'], 
+    default: 'pending' 
+  },
+  notes: String,
+  reminderSent: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
 // Health Facility Schema
 const facilitySchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -140,6 +194,8 @@ const analyticsSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 const HealthSession = mongoose.model('HealthSession', healthSessionSchema);
 const Emergency = mongoose.model('Emergency', emergencySchema);
+const Doctor = mongoose.model('Doctor', doctorSchema);
+const Appointment = mongoose.model('Appointment', appointmentSchema);
 const Facility = mongoose.model('Facility', facilitySchema);
 const Analytics = mongoose.model('Analytics', analyticsSchema);
 
@@ -161,6 +217,126 @@ async function initializeDatabase() {
 
 async function initializeSampleData() {
   try {
+    // Check if doctors exist, if not create sample ones
+    const doctorCount = await Doctor.countDocuments();
+    if (doctorCount === 0) {
+      const sampleDoctors = [
+        {
+          doctorId: 'DOC001',
+          name: 'Dr. Sarah Kimani',
+          specialization: 'General Medicine',
+          qualification: 'MBChB, University of Nairobi',
+          experience: 8,
+          hospital: 'Nairobi Hospital',
+          location: 'Nairobi',
+          phone: '+254701234567',
+          email: 'sarah.kimani@nairobihosp.co.ke',
+          availability: {
+            monday: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
+            tuesday: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
+            wednesday: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
+            thursday: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
+            friday: ['09:00', '10:00', '11:00', '14:00', '15:00'],
+            saturday: ['09:00', '10:00', '11:00'],
+            sunday: []
+          },
+          consultationFee: 2500,
+          rating: 4.8
+        },
+        {
+          doctorId: 'DOC002',
+          name: 'Dr. James Ochieng',
+          specialization: 'Pediatrics',
+          qualification: 'MBChB, MMed (Paediatrics)',
+          experience: 12,
+          hospital: 'Kenyatta National Hospital',
+          location: 'Nairobi',
+          phone: '+254701234568',
+          email: 'james.ochieng@knh.or.ke',
+          availability: {
+            monday: ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00'],
+            tuesday: ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00'],
+            wednesday: ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00'],
+            thursday: ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00'],
+            friday: ['08:00', '09:00', '10:00', '11:00', '14:00'],
+            saturday: ['08:00', '09:00', '10:00'],
+            sunday: []
+          },
+          consultationFee: 3000,
+          rating: 4.9
+        },
+        {
+          doctorId: 'DOC003',
+          name: 'Dr. Mary Wanjiku',
+          specialization: 'Gynecology',
+          qualification: 'MBChB, MMed (Obstetrics & Gynecology)',
+          experience: 10,
+          hospital: 'Aga Khan Hospital',
+          location: 'Nairobi',
+          phone: '+254701234569',
+          email: 'mary.wanjiku@agakhan.org',
+          availability: {
+            monday: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
+            tuesday: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
+            wednesday: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
+            thursday: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'],
+            friday: ['09:00', '10:00', '11:00', '14:00', '15:00'],
+            saturday: ['09:00', '10:00', '11:00'],
+            sunday: []
+          },
+          consultationFee: 3500,
+          rating: 4.7
+        },
+        {
+          doctorId: 'DOC004',
+          name: 'Dr. Peter Mutua',
+          specialization: 'Cardiology',
+          qualification: 'MBChB, MMed (Internal Medicine), Fellowship in Cardiology',
+          experience: 15,
+          hospital: 'Nairobi Hospital',
+          location: 'Nairobi',
+          phone: '+254701234570',
+          email: 'peter.mutua@nairobihosp.co.ke',
+          availability: {
+            monday: ['08:00', '09:00', '10:00', '14:00', '15:00'],
+            tuesday: ['08:00', '09:00', '10:00', '14:00', '15:00'],
+            wednesday: ['08:00', '09:00', '10:00', '14:00', '15:00'],
+            thursday: ['08:00', '09:00', '10:00', '14:00', '15:00'],
+            friday: ['08:00', '09:00', '10:00', '14:00'],
+            saturday: ['08:00', '09:00'],
+            sunday: []
+          },
+          consultationFee: 4000,
+          rating: 4.9
+        },
+        {
+          doctorId: 'DOC005',
+          name: 'Dr. Grace Akinyi',
+          specialization: 'Dermatology',
+          qualification: 'MBChB, MMed (Dermatology)',
+          experience: 6,
+          hospital: 'MP Shah Hospital',
+          location: 'Nairobi',
+          phone: '+254701234571',
+          email: 'grace.akinyi@mpshah.org',
+          availability: {
+            monday: ['10:00', '11:00', '14:00', '15:00', '16:00'],
+            tuesday: ['10:00', '11:00', '14:00', '15:00', '16:00'],
+            wednesday: ['10:00', '11:00', '14:00', '15:00', '16:00'],
+            thursday: ['10:00', '11:00', '14:00', '15:00', '16:00'],
+            friday: ['10:00', '11:00', '14:00', '15:00'],
+            saturday: ['10:00', '11:00'],
+            sunday: []
+          },
+          consultationFee: 2800,
+          rating: 4.6
+        }
+      ];
+
+      await Doctor.insertMany(sampleDoctors);
+      logger.info('Sample doctors created successfully');
+    }
+
     // Check if facilities exist, if not create sample ones
     const facilityCount = await Facility.countDocuments();
     if (facilityCount === 0) {
@@ -237,6 +413,8 @@ module.exports = {
   User,
   HealthSession,
   Emergency,
+  Doctor,
+  Appointment,
   Facility,
   Analytics
 };

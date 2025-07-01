@@ -7,3 +7,14 @@
 {"level":"info","message":"Database connected successfully","timestamp":"2025-07-01T15:09:10.877Z"}
 {"level":"info","message":"Scheduled tasks started","timestamp":"2025-07-01T15:09:11.628Z"}
 {"level":"info","message":"🚀 MedConnect AI Server running on port 3000","timestamp":"2025-07-01T15:09:11.737Z"}
+{"level":"info","message":"Database connected successfully","timestamp":"2025-07-01T18:52:04.950Z"}
+{"level":"info","message":"Database connected successfully","timestamp":"2025-07-01T18:52:12.762Z"}
+{"level":"info","message":"Database connected successfully","timestamp":"2025-07-01T19:34:29.796Z"}
+{"level":"info","message":"Scheduled tasks started","timestamp":"2025-07-01T19:34:30.232Z"}
+{"level":"info","message":"🚀 MedConnect AI Server running on port 3000","timestamp":"2025-07-01T19:34:30.244Z"}
+{"level":"info","message":"Database connected successfully","timestamp":"2025-07-01T19:57:18.953Z"}
+{"level":"info","message":"Scheduled tasks started","timestamp":"2025-07-01T19:57:19.149Z"}
+{"level":"info","message":"🚀 MedConnect AI Server running on port 3000","timestamp":"2025-07-01T19:57:19.160Z"}
+{"level":"info","message":"Root callback called, forwarding to SMS handler","timestamp":"2025-07-01T19:57:59.955Z"}
+{"date":"2025-07-01 19:48:32","from":"+254719623147","id":"fed2f869-5e07-43e9-8fd8-4c90d3fbdf58","level":"info","linkId":"8a5e6a5c-e158-4610-b32d-c5d193b82baf","message":"Callback payload:","text":"hello","timestamp":"2025-07-01T19:57:59.964Z","to":"15629"}
+{"level":"info","message":"SMS processed for user: User_3147 (+254719623147)","timestamp":"2025-07-01T19:58:00.187Z"}

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
-const { User, HealthSession } = require('../services/database');
+const { User, HealthSession, Doctor, Appointment } = require('../services/database');
 const aiService = require('../services/ai');
 const atService = require('../services/africasTalking');
 const winston = require('winston');
@@ -22,6 +22,10 @@ const STATES = {
   SYMPTOMS_INPUT: 'symptoms_input',
   EMERGENCY: 'emergency',
   APPOINTMENT: 'appointment',
+  DOCTOR_SELECTION: 'doctor_selection',
+  DATE_SELECTION: 'date_selection',
+  TIME_SELECTION: 'time_selection',
+  APPOINTMENT_CONFIRMATION: 'appointment_confirmation',
   PROFILE: 'profile',
   HEALTH_TIPS: 'health_tips',
   FIND_FACILITY: 'find_facility',
@@ -79,6 +83,18 @@ router.post('/', async (req, res) => {
         break;
       case STATES.APPOINTMENT:
         response = await handleAppointment(session, lastInput, user);
+        break;
+      case STATES.DOCTOR_SELECTION:
+        response = await handleDoctorSelection(session, lastInput, user);
+        break;
+      case STATES.DATE_SELECTION:
+        response = await handleDateSelection(session, lastInput, user);
+        break;
+      case STATES.TIME_SELECTION:
+        response = await handleTimeSelection(session, lastInput, user);
+        break;
+      case STATES.APPOINTMENT_CONFIRMATION:
+        response = await handleAppointmentConfirmation(session, lastInput, user);
         break;
       case STATES.PROFILE:
         response = await handleProfile(session, lastInput, user);
@@ -371,44 +387,335 @@ Stay safe and help is on the way!`;
 async function handleAppointment(session, input, user) {
   switch (input) {
     case '1':
-      return `END 🗓️ APPOINTMENT BOOKING
-To book an appointment, please:
-
-1. Call your preferred facility directly
-2. Visit our web portal
-3. Send SMS "BOOK [Doctor] [Date]" 
-
-📱 We'll send you facility contacts via SMS`;
+      // Book new appointment - show doctor list
+      session.state = STATES.DOCTOR_SELECTION;
+      return await showDoctorList(session, user);
       
     case '2':
-      const upcomingAppointments = user.appointments?.filter(apt => 
-        new Date(apt.date) > new Date() && apt.status === 'scheduled'
-      ) || [];
-      
-      if (upcomingAppointments.length === 0) {
-        return `END 🗓️ MY APPOINTMENTS
-You have no upcoming appointments.
+      // View appointments
+      try {
+        const appointments = await Appointment.find({ 
+          patientPhone: user.phoneNumber,
+          appointmentDate: { $gte: new Date() }
+        }).sort({ appointmentDate: 1 }).limit(5);
+        
+        if (appointments.length === 0) {
+          return `END � No upcoming appointments found.
 
-📞 Book new appointment:
-Use option 1 from appointments menu`;
+Use option 1 to book a new appointment.`;
+        }
+        
+        let appointmentList = `END � UPCOMING APPOINTMENTS:\n\n`;
+        appointments.forEach((apt, index) => {
+          appointmentList += `${index + 1}. Dr. ${apt.doctorName}
+   📅 ${apt.appointmentDate.toLocaleDateString()}
+   ⏰ ${apt.timeSlot}
+   🏥 ${apt.specialization}
+   🆔 ${apt.appointmentId}\n\n`;
+        });
+        
+        return appointmentList + `📱 Full details sent via SMS`;
+        
+      } catch (error) {
+        logger.error('Error fetching appointments:', error);
+        return `END ❌ Unable to fetch appointments. Please try again later.`;
       }
       
-      const nextAppointment = upcomingAppointments[0];
-      return `END 🗓️ MY APPOINTMENTS
-Next Appointment:
-👨‍⚕️ ${nextAppointment.doctor || 'Doctor TBD'}
-🏥 ${nextAppointment.facility || 'Facility TBD'}
-📅 ${new Date(nextAppointment.date).toLocaleDateString()}
+    case '3':
+      return `END 📞 APPOINTMENT SUPPORT
 
-Total upcoming: ${upcomingAppointments.length}`;
+For assistance with appointments:
+• Call: +254700000000  
+• WhatsApp: +254700000000
+• Email: appointments@medconnect.ke
+• SMS: "HELP" to this number
+
+Operating Hours: 8AM - 8PM (Mon-Sat)`;
       
     case '0':
       session.state = STATES.MAIN_MENU;
       return await showMainMenu(session, user);
       
     default:
-      return `CON Invalid choice. Please try again.`;
+      return `CON 🗓️ APPOINTMENT SERVICES
+Choose an option:
+
+1. Book new appointment
+2. View my appointments  
+3. Appointment support
+
+0. Back to main menu`;
   }
+}
+
+// Enhanced Appointment Booking Functions
+async function showDoctorList(session, user) {
+  try {
+    const doctors = await Doctor.find({ isActive: true }).limit(5);
+    
+    let response = `CON 👨‍⚕️ SELECT DOCTOR
+Choose a doctor:
+
+`;
+    
+    doctors.forEach((doctor, index) => {
+      response += `${index + 1}. Dr. ${doctor.name}
+   ${doctor.specialization} - KSh ${doctor.consultationFee}
+   ⭐ ${doctor.rating}/5.0
+
+`;
+    });
+    
+    response += `0. Back to appointments menu`;
+    
+    // Store doctors in session for later reference
+    session.data.availableDoctors = doctors;
+    
+    return response;
+  } catch (error) {
+    logger.error('Error fetching doctors:', error);
+    return `END ❌ Sorry, unable to load doctors list. Please try again later.`;
+  }
+}
+
+async function handleDoctorSelection(session, input, user) {
+  if (input === '0') {
+    session.state = STATES.APPOINTMENT;
+    return await handleAppointment(session, '', user);
+  }
+  
+  const doctorIndex = parseInt(input) - 1;
+  const doctors = session.data.availableDoctors || [];
+  
+  if (doctorIndex >= 0 && doctorIndex < doctors.length) {
+    const selectedDoctor = doctors[doctorIndex];
+    session.data.selectedDoctor = selectedDoctor;
+    session.state = STATES.DATE_SELECTION;
+    
+    return `CON 📅 SELECT DATE
+Doctor: ${selectedDoctor.name}
+Specialization: ${selectedDoctor.specialization}
+Fee: KSh ${selectedDoctor.consultationFee}
+
+Choose date:
+1. Today (${getDateString(0)})
+2. Tomorrow (${getDateString(1)})
+3. ${getDateString(2)}
+4. ${getDateString(3)}
+5. ${getDateString(4)}
+
+0. Back to doctors list`;
+  } else {
+    return `CON ❌ Invalid selection. Please choose a valid doctor number.
+
+0. Back to doctors list`;
+  }
+}
+
+async function handleDateSelection(session, input, user) {
+  if (input === '0') {
+    session.state = STATES.DOCTOR_SELECTION;
+    return await showDoctorList(session, user);
+  }
+  
+  const dateOffset = parseInt(input) - 1;
+  if (dateOffset >= 0 && dateOffset <= 4) {
+    const selectedDate = new Date();
+    selectedDate.setDate(selectedDate.getDate() + dateOffset);
+    
+    // Get day name in the format our doctors use (e.g., 'monday', 'tuesday', etc.)
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayNames[selectedDate.getDay()];
+    
+    session.data.selectedDate = selectedDate;
+    session.state = STATES.TIME_SELECTION;
+    
+    const doctor = session.data.selectedDoctor;
+    const availableSlots = doctor.availability[dayName] || [];
+    
+    if (availableSlots.length === 0) {
+      return `CON ❌ No slots available for ${getDateString(dateOffset)}
+Doctor ${doctor.name} is not available on this day.
+
+Please choose another date:
+1. Today (${getDateString(0)})
+2. Tomorrow (${getDateString(1)})
+3. ${getDateString(2)}
+4. ${getDateString(3)}
+5. ${getDateString(4)}
+
+0. Back to doctors list`;
+    }
+    
+    let response = `CON ⏰ SELECT TIME
+Date: ${getDateString(dateOffset)}
+Doctor: ${doctor.name}
+
+Available slots:
+`;
+    
+    availableSlots.slice(0, 6).forEach((slot, index) => {
+      response += `${index + 1}. ${slot}\n`;
+    });
+    
+    response += `\n0. Back to date selection`;
+    
+    session.data.availableSlots = availableSlots;
+    return response;
+  } else {
+    return `CON ❌ Invalid date selection.
+
+Choose date:
+1. Today (${getDateString(0)})
+2. Tomorrow (${getDateString(1)})
+3. ${getDateString(2)}
+4. ${getDateString(3)}
+5. ${getDateString(4)}
+
+0. Back to doctors list`;
+  }
+}
+
+async function handleTimeSelection(session, input, user) {
+  if (input === '0') {
+    session.state = STATES.DATE_SELECTION;
+    return `CON 📅 SELECT DATE
+Choose date:
+1. Today (${getDateString(0)})
+2. Tomorrow (${getDateString(1)})
+3. ${getDateString(2)}
+4. ${getDateString(3)}
+5. ${getDateString(4)}
+
+0. Back to doctors list`;
+  }
+  
+  const slotIndex = parseInt(input) - 1;
+  const availableSlots = session.data.availableSlots || [];
+  
+  if (slotIndex >= 0 && slotIndex < availableSlots.length) {
+    const selectedTime = availableSlots[slotIndex];
+    session.data.selectedTime = selectedTime;
+    session.state = STATES.APPOINTMENT_CONFIRMATION;
+    
+    const doctor = session.data.selectedDoctor;
+    const date = session.data.selectedDate;
+    
+    return `CON ✅ CONFIRM APPOINTMENT
+
+👨‍⚕️ Doctor: ${doctor.name}
+🏥 Hospital: ${doctor.hospital}
+📅 Date: ${date.toLocaleDateString()}
+⏰ Time: ${selectedTime}
+💰 Fee: KSh ${doctor.consultationFee}
+
+1. Confirm booking
+2. Add symptoms/notes
+0. Back to time selection`;
+  } else {
+    return `CON ❌ Invalid time selection. Please choose a valid time slot.
+
+0. Back to time selection`;
+  }
+}
+
+async function handleAppointmentConfirmation(session, input, user) {
+  const doctor = session.data.selectedDoctor;
+  const date = session.data.selectedDate;
+  const time = session.data.selectedTime;
+  
+  switch (input) {
+    case '1':
+      // Confirm and create appointment
+      try {
+        const appointment = new Appointment({
+          appointmentId: `APT_${Date.now()}`,
+          patientPhone: user.phoneNumber,
+          patientName: user.name,
+          doctorId: doctor.doctorId,
+          doctorName: doctor.name,
+          specialization: doctor.specialization,
+          appointmentDate: date,
+          timeSlot: time,
+          consultationFee: doctor.consultationFee,
+          symptoms: session.data.symptoms || ''
+        });
+        
+        await appointment.save();
+        
+        // Send confirmation SMS
+        const smsMessage = `✅ APPOINTMENT CONFIRMED
+Dr. ${doctor.name} (${doctor.specialization})
+📅 ${date.toLocaleDateString()} at ${time}
+🏥 ${doctor.hospital}
+💰 Fee: KSh ${doctor.consultationFee}
+📞 Doctor: ${doctor.phone}
+
+Appointment ID: ${appointment.appointmentId}
+Arrive 15 mins early. Take care!`;
+        
+        await atService.sendSMS(user.phoneNumber, smsMessage);
+        
+        return `END ✅ APPOINTMENT BOOKED!
+
+Appointment ID: ${appointment.appointmentId}
+📱 Confirmation sent via SMS
+
+Thank you for choosing MedConnect AI!`;
+        
+      } catch (error) {
+        logger.error('Error creating appointment:', error);
+        return `END ❌ Sorry, unable to book appointment. Please try again later.`;
+      }
+      
+    case '2':
+      return `CON 📝 ADD SYMPTOMS/NOTES
+Briefly describe your symptoms or reason for visit:
+
+Type your message and press OK.
+Max 100 characters.
+
+0. Skip and confirm booking`;
+      
+    case '0':
+      session.state = STATES.TIME_SELECTION;
+      return `CON ⏰ SELECT TIME
+Available slots:
+${session.data.availableSlots.map((slot, i) => `${i+1}. ${slot}`).join('\n')}
+
+0. Back to date selection`;
+      
+    default:
+      // User entered symptoms/notes
+      if (input.length > 100) {
+        return `CON ❌ Message too long (max 100 chars)
+Current: ${input.length} chars
+
+Please shorten your message:`;
+      }
+      
+      session.data.symptoms = input;
+      return `CON ✅ CONFIRM APPOINTMENT
+
+👨‍⚕️ Doctor: ${doctor.name}
+📅 Date: ${date.toLocaleDateString()}
+⏰ Time: ${time}
+💰 Fee: KSh ${doctor.consultationFee}
+📝 Notes: ${input}
+
+1. Confirm booking
+0. Back to time selection`;
+  }
+}
+
+function getDateString(daysFromToday) {
+  const date = new Date();
+  date.setDate(date.getDate() + daysFromToday);
+  return date.toLocaleDateString('en-US', { 
+    weekday: 'short', 
+    month: 'short', 
+    day: 'numeric' 
+  });
 }
 
 async function handleHealthTips(session, input, user) {
