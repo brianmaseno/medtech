@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedConnect AI - Revolutionary Health-tech Solution</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        /* Header & Navigation */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 1rem 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+        }
+
+        .logo i {
+            margin-right: 10px;
+            color: #e74c3c;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: #667eea;
+        }
+
+        .cta-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.3s ease;
+        }
+
+        .cta-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8rem 0 4rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><polygon fill="rgba(255,255,255,0.1)" points="0,1000 1000,800 1000,1000"/></svg>');
+            background-size: cover;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #fff, #f0f0f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.3rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 3rem;
+        }
+
+        .btn-primary {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .ussd-code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1rem 2rem;
+            border-radius: 15px;
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin: 2rem auto;
+            display: inline-block;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 6rem 0;
+            background: #f8f9fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-title h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+
+        .section-title p {
+            font-size: 1.2rem;
+            color: #7f8c8d;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            text-align: center;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2rem;
+            color: white;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card p {
+            color: #7f8c8d;
+            line-height: 1.8;
+        }
+
+        /* Services Section */
+        .services {
+            padding: 6rem 0;
+            background: white;
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .service-item {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 2rem;
+            border-radius: 15px;
+            border-left: 5px solid #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .service-item:hover {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            transform: translateX(10px);
+        }
+
+        .service-item h4 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* AI Chat Section */
+        .ai-chat {
+            padding: 6rem 0;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            text-align: center;
+        }
+
+        .chat-demo {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 3rem auto;
+            max-width: 600px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .chat-message {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 1rem;
+            border-radius: 15px;
+            margin: 1rem 0;
+            text-align: left;
+        }
+
+        .chat-message.user {
+            background: rgba(102, 126, 234, 0.3);
+            margin-left: 2rem;
+        }
+
+        .chat-message.ai {
+            background: rgba(46, 204, 113, 0.3);
+            margin-right: 2rem;
+        }
+
+        /* Statistics Section */
+        .stats {
+            padding: 4rem 0;
+            background: #2c3e50;
+            color: white;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            text-align: center;
+        }
+
+        .stat-item h3 {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-item p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 6rem 0;
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+            text-align: center;
+        }
+
+        .cta-section h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .cta-section p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        /* Footer */
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 3rem 0 1rem;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h4 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #667eea;
+        }
+
+        .footer-section p,
+        .footer-section a {
+            color: #bdc3c7;
+            text-decoration: none;
+            line-height: 1.8;
+        }
+
+        .footer-section a:hover {
+            color: #667eea;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid #34495e;
+            padding-top: 2rem;
+            text-align: center;
+            color: #95a5a6;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .ussd-code {
+                font-size: 1.5rem;
+            }
+
+            .features-grid,
+            .services-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        /* Floating Animation */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fas fa-heartbeat"></i>
+                MedConnect AI
+            </div>
+            <ul class="nav-links">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#services">Services</a></li>
+                <li><a href="#ai-chat">AI Chat</a></li>
+                <li><a href="#dashboard">Dashboard</a></li>
+            </ul>
+            <a href="/dashboard" class="cta-btn">
+                <i class="fas fa-chart-line"></i>
+                Dashboard
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-content fade-in-up">
+            <h1>🏥 MedConnect AI</h1>
+            <p class="hero-subtitle">
+                Revolutionary Health-tech Solution bringing AI-powered healthcare to every African, on every phone, everywhere.
+            </p>
+            
+            <div class="hero-buttons">
+                <a href="#features" class="btn-primary">
+                    <i class="fas fa-rocket"></i>
+                    Explore Features
+                </a>
+                <a href="#ai-chat" class="btn-primary">
+                    <i class="fas fa-robot"></i>
+                    Try AI Chat
+                </a>
+                <a href="/dashboard" class="btn-primary">
+                    <i class="fas fa-chart-line"></i>
+                    Live Dashboard
+                </a>
+            </div>
+
+            <div class="ussd-code floating">
+                📱 Dial: *384*57000#
+            </div>
+            
+            <p style="margin-top: 1rem; opacity: 0.8; font-size: 1.1rem;">
+                ✨ Works on ANY phone | No internet required | AI-powered health assistance
+            </p>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <div class="section-title fade-in-up">
+                <h2>🚀 Revolutionary Features</h2>
+                <p>Transforming healthcare accessibility across Africa with cutting-edge technology</p>
+            </div>
+
+            <div class="features-grid">
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3>🤖 AI-Powered Diagnostics</h3>
+                    <p>Advanced symptom analysis using Google Gemini AI. Get personalized health recommendations in seconds, tailored for African health patterns and cultural contexts.</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h3>📱 USSD Universal Access</h3>
+                    <p>Works on ANY phone - from Nokia 3310 to smartphones. No internet required! Dial *384*57000# for instant health assistance anywhere in Africa.</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">
+                        <i class="fas fa-ambulance"></i>
+                    </div>
+                    <h3>🚨 Emergency Response</h3>
+                    <p>Instant emergency coordination with real-time responder dispatch. Multi-agency integration with police, ambulance, and fire services.</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">
+                        <i class="fas fa-sms"></i>
+                    </div>
+                    <h3>💬 Smart SMS Integration</h3>
+                    <p>Automated medication reminders, appointment notifications, and daily health tips. Two-way SMS communication with intelligent command processing.</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>📊 Real-time Analytics</h3>
+                    <p>Beautiful dashboard with live health metrics, emergency tracking, and community health insights. Data-driven healthcare for better outcomes.</p>
+                </div>
+
+                <div class="feature-card fade-in-up">
+                    <div class="feature-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h3>🔄 Automated Workflows</h3>
+                    <p>Smart scheduling for health checkups, medication reminders, and health education. AI-powered automation that cares for your health 24/7.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="services" class="services">
+        <div class="container">
+            <div class="section-title fade-in-up">
+                <h2>🏥 Comprehensive Health Services</h2>
+                <p>Complete healthcare ecosystem accessible through USSD, SMS, and web interface</p>
+            </div>
+
+            <div class="services-grid">
+                <div class="service-item">
+                    <h4><i class="fas fa-stethoscope"></i> Health Consultations</h4>
+                    <p>AI-powered symptom analysis and health recommendations available 24/7</p>
+                </div>
+
+                <div class="service-item">
+                    <h4><i class="fas fa-calendar-check"></i> Appointment Booking</h4>
+                    <p>Schedule and manage healthcare appointments with automated reminders</p>
+                </div>
+
+                <div class="service-item">
+                    <h4><i class="fas fa-pills"></i> Medication Management</h4>
+                    <p>Smart medication reminders and prescription tracking system</p>
+                </div>
+
+                <div class="service-item">
+                    <h4><i class="fas fa-map-marker-alt"></i> Health Facility Locator</h4>
+                    <p>Find nearby hospitals, clinics, pharmacies, and emergency services</p>
+                </div>
+
+                <div class="service-item">
+                    <h4><i class="fas fa-graduation-cap"></i> Health Education</h4>
+                    <p>Daily AI-generated health tips and culturally relevant health information</p>
+                </div>
+
+                <div class="service-item">
+                    <h4><i class="fas fa-user-circle"></i> Personal Health Profile</h4>
+                    <p>Comprehensive health records and medical history management</p>
+                </div>
+
+                <div class="service-item">
+                    <h4><i class="fas fa-phone-volume"></i> Emergency Coordination</h4>
+                    <p>Instant emergency response with real-time coordination and tracking</p>
+                </div>
+
+                <div class="service-item">
+                    <h4><i class="fas fa-comments"></i> Health Community</h4>
+                    <p>Connect with healthcare providers and access community health resources</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI Chat Section -->
+    <section id="ai-chat" class="ai-chat">
+        <div class="container">
+            <div class="section-title fade-in-up">
+                <h2>🤖 AI Health Assistant</h2>
+                <p>Chat with our AI-powered health assistant through USSD or SMS</p>
+            </div>
+
+            <div class="chat-demo fade-in-up">
+                <h3 style="margin-bottom: 2rem;">💬 Sample AI Conversation via USSD</h3>
+                
+                <div class="chat-message user">
+                    <strong>📱 You:</strong> *384*57000# → Option 6 (AI Chat)<br>
+                    "I have fever and headache for 2 days"
+                </div>
+                
+                <div class="chat-message ai">
+                    <strong>🤖 MedConnect AI:</strong> I understand you're experiencing fever and headache for 2 days. Based on your symptoms, this could indicate:
+                    <br><br>
+                    • Common cold or flu<br>
+                    • Possible dehydration<br>
+                    • Stress-related tension<br>
+                    <br>
+                    <strong>Recommendations:</strong><br>
+                    ✅ Rest and stay hydrated<br>
+                    ✅ Take paracetamol if needed<br>
+                    ⚠️ Seek medical care if fever >38.5°C<br>
+                    <br>
+                    Would you like me to find nearby clinics?
+                </div>
+                
+                <div class="chat-message user">
+                    <strong>📱 You:</strong> "Yes, find clinics near me"
+                </div>
+                
+                <div class="chat-message ai">
+                    <strong>🤖 MedConnect AI:</strong> 🏥 Nearby Health Facilities:
+                    <br><br>
+                    1. <strong>Nairobi Hospital</strong><br>
+                    📍 Argwings Kodhek Road<br>
+                    📞 +254202722000<br>
+                    ⏰ 24/7 Emergency<br>
+                    <br>
+                    2. <strong>City Health Clinic</strong><br>
+                    📍 CBD, Nairobi<br>
+                    📞 +254701234567<br>
+                    ⏰ 8AM-6PM<br>
+                    <br>
+                    📱 Detailed info sent via SMS!
+                </div>
+            </div>
+
+            <div style="margin-top: 3rem;">
+                <a href="#" class="btn-primary" style="font-size: 1.2rem; padding: 1.2rem 2.5rem;">
+                    <i class="fas fa-comments"></i>
+                    Try AI Chat via USSD: *384*57000#
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Statistics Section -->
+    <section class="stats">
+        <div class="container">
+            <div class="stats-grid fade-in-up">
+                <div class="stat-item">
+                    <h3>1.3B+</h3>
+                    <p>Potential Users Across Africa</p>
+                </div>
+                <div class="stat-item">
+                    <h3>24/7</h3>
+                    <p>AI Health Assistance</p>
+                </div>
+                <div class="stat-item">
+                    <h3>100%</h3>
+                    <p>Phone Compatibility</p>
+                </div>
+                <div class="stat-item">
+                    <h3>10 Sec</h3>
+                    <p>AI Diagnosis Speed</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container fade-in-up">
+            <h2>🚀 Ready to Experience the Future of Healthcare?</h2>
+            <p>Join thousands of Africans already using MedConnect AI for better health outcomes</p>
+            
+            <div class="hero-buttons" style="margin-top: 2rem;">
+                <a href="#" class="btn-primary" style="background: rgba(255,255,255,0.2);">
+                    <i class="fas fa-mobile-alt"></i>
+                    Dial *384*57000#
+                </a>
+                <a href="/dashboard" class="btn-primary" style="background: rgba(255,255,255,0.2);">
+                    <i class="fas fa-chart-line"></i>
+                    View Dashboard
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>🏥 MedConnect AI</h4>
+                    <p>Revolutionary health-tech solution bringing AI-powered healthcare to every African, on every phone, everywhere.</p>
+                    <p style="margin-top: 1rem;">
+                        <strong>USSD:</strong> *384*57000#<br>
+                        <strong>Emergency:</strong> Available 24/7
+                    </p>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>🚀 Features</h4>
+                    <p><a href="#features">AI Health Diagnostics</a></p>
+                    <p><a href="#features">USSD Interface</a></p>
+                    <p><a href="#features">Emergency Response</a></p>
+                    <p><a href="#features">SMS Integration</a></p>
+                    <p><a href="#ai-chat">AI Chat Assistant</a></p>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>🏥 Services</h4>
+                    <p><a href="#services">Health Consultations</a></p>
+                    <p><a href="#services">Appointment Booking</a></p>
+                    <p><a href="#services">Medication Reminders</a></p>
+                    <p><a href="#services">Emergency Coordination</a></p>
+                    <p><a href="#services">Health Education</a></p>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>📞 Access Points</h4>
+                    <p><strong>USSD:</strong> *384*57000#</p>
+                    <p><strong>Dashboard:</strong> <a href="/dashboard">Web Interface</a></p>
+                    <p><strong>SMS:</strong> Send "HELP" to get started</p>
+                    <p><strong>Emergency:</strong> Available via all channels</p>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2025 MedConnect AI. Built for Africa's Talking Health-tech Hackathon. Revolutionizing healthcare accessibility across Africa.</p>
+                <p style="margin-top: 0.5rem;">
+                    <strong>Developer:</strong> Brian Mayoga | 
+                    <strong>Technology:</strong> Node.js, Google Gemini AI, Africa's Talking APIs, MongoDB
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Add scroll effect to navbar
+        window.addEventListener('scroll', () => {
+            const navbar = document.querySelector('.navbar');
+            if (window.scrollY > 100) {
+                navbar.style.background = 'rgba(255, 255, 255, 0.98)';
+            } else {
+                navbar.style.background = 'rgba(255, 255, 255, 0.95)';
+            }
+        });
+
+        // Animate elements on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe all fade-in-up elements
+        document.querySelectorAll('.fade-in-up').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'opacity 0.8s ease-out, transform 0.8s ease-out';
+            observer.observe(el);
+        });
+
+        // Counter animation for stats
+        const animateCounters = () => {
+            const counters = document.querySelectorAll('.stat-item h3');
+            counters.forEach(counter => {
+                const target = counter.innerText;
+                const numericValue = parseFloat(target.replace(/[^\d.]/g, ''));
+                let current = 0;
+                const increment = numericValue / 50;
+                const timer = setInterval(() => {
+                    current += increment;
+                    if (current >= numericValue) {
+                        counter.innerText = target;
+                        clearInterval(timer);
+                    } else {
+                        if (target.includes('B')) {
+                            counter.innerText = current.toFixed(1) + 'B+';
+                        } else if (target.includes('/')) {
+                            counter.innerText = '24/7';
+                        } else if (target.includes('%')) {
+                            counter.innerText = Math.round(current) + '%';
+                        } else {
+                            counter.innerText = Math.round(current) + ' Sec';
+                        }
+                    }
+                }, 50);
+            });
+        };
+
+        // Trigger counter animation when stats section is visible
+        const statsSection = document.querySelector('.stats');
+        const statsObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    animateCounters();
+                    statsObserver.unobserve(entry.target);
+                }
+            });
+        });
+        statsObserver.observe(statsSection);
+
+        console.log(`
+🏥 MedConnect AI - Revolutionary Health-tech Solution
+
+🚀 Features:
+• AI-powered health diagnostics
+• USSD interface (*384*57000#)
+• Emergency response system
+• SMS integration
+• Real-time analytics
+
+📱 Try it now: Dial *384*57000#
+🌐 Dashboard: /dashboard
+💬 AI Chat: Available via USSD
+
+Built for Africa's Talking Health-tech Hackathon
+Developer: Brian Mayoga
+        `);
+    </script>
+</body>
+</html>
