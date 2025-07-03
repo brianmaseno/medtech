@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { User, HealthSession, Doctor, Appointment } = require('../services/database');
+const { User, HealthSession, Doctor, Appointment, ChatHistory } = require('../services/database');
 const atService = require('../services/africasTalking');
 const aiService = require('../services/ai');
 const winston = require('winston');
@@ -22,7 +22,10 @@ class ConversationManager {
       SELECTING_DOCTOR: 'selecting_doctor',
       SELECTING_DATE: 'selecting_date',
       SELECTING_TIME: 'selecting_time',
-      CONFIRMING: 'confirming'
+      CONFIRMING: 'confirming',
+      VIEWING_APPOINTMENTS: 'viewing_appointments',
+      CANCELLING: 'cancelling',
+      RESCHEDULING: 'rescheduling'
     };
   }
 
@@ -45,12 +48,439 @@ async function processConversationalSMS(text, user) {
   const phoneNumber = user.phoneNumber;
   const currentState = conversationManager.getState(phoneNumber);
   
-  logger.info(`Conversational SMS from ${phoneNumber}: "${text}" (State: ${currentState.state})`);
+  logger.info(`📱 SMS from ${phoneNumber}: "${text}" (State: ${currentState.state})`);
   
-  // Handle exit commands
-  if (['exit', 'stop', 'quit', 'end', 'cancel'].includes(text.toLowerCase())) {
+  // Save incoming message to chat history
+  await saveChatMessage(user, text, 'user');
+  
+  // PRIORITY COMMANDS - These override any current state and work from anywhere
+  const lowerText = text.toLowerCase().trim();
+  
+  // HOME command - Always goes to main menu regardless of current state
+  if (lowerText === 'home' || lowerText === 'main' || lowerText === 'menu') {
+    conversationManager.setState(phoneNumber, conversationManager.states.INITIAL);
+    const response = `🏠 **Welcome Back to MedConnect AI Main Menu**
+
+Hi ${user.name}! Here's what I can help you with:
+
+1️⃣ **CHAT** - AI Health Consultation
+2️⃣ **BOOK** - Schedule Doctor Appointment  
+3️⃣ **VIEW** - See My Appointments
+4️⃣ **DOCTORS** - List Available Doctors
+5️⃣ **TIPS** - Get Health Tips
+
+💬 **Quick Commands:**
+• Type any number (1-5) or keyword
+• Type "HOME" anytime to return here
+• Type "EXIT" to end conversation
+• Ask health questions directly
+
+What can I help you with today? 😊`;
+    await saveChatMessage(user, response, 'ai');
+    return response;
+  }
+  
+  // Exit commands - End conversation completely
+  const exitCommands = ['exit', 'stop', 'quit', 'end', 'cancel', 'bye', 'goodbye'];
+  if (exitCommands.includes(lowerText)) {
     conversationManager.clearState(phoneNumber);
-    return `👋 Conversation ended. Send any message to start again or use these commands:
+    const response = `👋 **Goodbye ${user.name}!**
+
+Thanks for using MedConnect AI! 
+
+💡 **Remember:**
+• Text "HOME" anytime to restart
+• We're here 24/7 for your health needs
+• For emergencies, call your local services
+
+Take care and stay healthy! 🏥💚`;
+    await saveChatMessage(user, response, 'ai');
+    return response;
+  }
+  
+  // Help commands - Show available commands and current menu
+  if (['help', 'commands', '?', 'info'].includes(lowerText)) {
+    const response = `ℹ️ **MedConnect AI - Help**
+
+**Main Commands:**
+1️⃣ CHAT - Ask health questions
+2️⃣ BOOK - Schedule appointments
+3️⃣ VIEW - See my appointments
+4️⃣ DOCTORS - List available doctors
+5️⃣ TIPS - Get health tips
+
+**Navigation Commands:**
+🏠 HOME - Return to main menu
+❌ EXIT - End conversation
+❓ HELP - Show this help
+
+**Special Commands:**
+📋 APPOINTMENTS - Quick view appointments
+🩺 AI - Direct AI health chat
+📞 EMERGENCY - Emergency contacts
+
+**Current State:** ${currentState.state}
+
+Type any command or just tell me what you need! 😊`;
+    await saveChatMessage(user, response, 'ai');
+    return response;
+  }
+
+  // Quick access commands that work from any state
+  if (lowerText.includes('appointment') && (lowerText.includes('view') || lowerText.includes('show') || lowerText.includes('list'))) {
+    conversationManager.setState(phoneNumber, conversationManager.states.VIEWING_APPOINTMENTS);
+    const response = await showUpcomingAppointments(user);
+    await saveChatMessage(user, response, 'ai');
+    return response;
+  }
+
+  if (lowerText.includes('doctor') && (lowerText.includes('list') || lowerText.includes('show') || lowerText.includes('available'))) {
+    const response = await listAvailableDoctors();
+    await saveChatMessage(user, response, 'ai');
+    return response;
+  }
+
+  // Emergency command
+  if (lowerText.includes('emergency') || lowerText.includes('urgent') || lowerText.includes('911') || lowerText.includes('999')) {
+    const response = `🚨 **EMERGENCY CONTACTS**
+
+**Kenya Emergency Numbers:**
+🚑 Ambulance: 999
+🚔 Police: 999  
+🔥 Fire: 999
+🏥 Emergency Hotline: 911
+
+**Health Emergency:**
+If this is a medical emergency, call 999 immediately or visit the nearest hospital.
+
+**MedConnect AI Emergency Features:**
+• Type "CHAT" for urgent health questions
+• Type "DOCTORS" to find nearest medical help
+• Type "HOME" to return to main menu
+
+Are you experiencing a medical emergency? If yes, please call 999 now! 🆘`;
+    await saveChatMessage(user, response, 'ai');
+    return response;
+  }
+
+  // Route based on current state
+  let response;
+  switch (currentState.state) {
+    case conversationManager.states.INITIAL:
+      response = await handleInitialState(text, user);
+      break;
+    case conversationManager.states.CHATTING:
+      response = await handleChatting(text, user, currentState);
+      break;
+    case conversationManager.states.BOOKING:
+      response = await handleBooking(text, user, currentState);
+      break;
+    case conversationManager.states.SELECTING_DOCTOR:
+      response = await handleDoctorSelection(text, user, currentState);
+      break;
+    case conversationManager.states.SELECTING_DATE:
+      response = await handleDateSelection(text, user, currentState);
+      break;
+    case conversationManager.states.SELECTING_TIME:
+      response = await handleTimeSelection(text, user, currentState);
+      break;
+    case conversationManager.states.CONFIRMING:
+      response = await handleBookingConfirmation(text, user, currentState);
+      break;
+    case conversationManager.states.VIEWING_APPOINTMENTS:
+      response = await handleViewingAppointments(text, user, currentState);
+      break;
+    case conversationManager.states.CANCELLING:
+      response = await handleCancelling(text, user, currentState);
+      break;
+    case conversationManager.states.RESCHEDULING:
+      response = await handleRescheduling(text, user, currentState);
+      break;
+    default:
+      response = await handleInitialState(text, user);
+  }
+
+  // Save AI response to chat history
+  await saveChatMessage(user, response, 'ai');
+  
+  return response;
+}
+
+// Save chat messages to database for conversation memory
+async function saveChatMessage(user, message, sender) {
+  try {
+    // Get or create chat history for today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let chatHistory = await ChatHistory.findOne({
+      phoneNumber: user.phoneNumber,
+      date: { $gte: today }
+    });
+    
+    if (!chatHistory) {
+      chatHistory = new ChatHistory({
+        phoneNumber: user.phoneNumber,
+        userId: user._id,
+        date: new Date(),
+        messages: []
+      });
+    }
+    
+    chatHistory.messages.push({
+      content: message,
+      sender: sender, // 'user' or 'ai'
+      timestamp: new Date()
+    });
+    
+    await chatHistory.save();
+    logger.info(`💾 Saved ${sender} message for ${user.phoneNumber}`);
+  } catch (error) {
+    logger.error('Error saving chat message:', error);
+  }
+}
+
+// Get conversation context from recent chat history
+async function getConversationContext(user, limit = 5) {
+  try {
+    const recentChats = await ChatHistory.find({
+      phoneNumber: user.phoneNumber
+    }).sort({ date: -1 }).limit(3);
+    
+    let context = [];
+    recentChats.reverse().forEach(chat => {
+      chat.messages.slice(-limit).forEach(msg => {
+        context.push(`${msg.sender}: ${msg.content}`);
+      });
+    });
+    
+    return context.slice(-limit);
+  } catch (error) {
+    logger.error('Error getting conversation context:', error);
+    return [];
+  }
+}
+
+async function handleInitialState(text, user) {
+  const input = text.toLowerCase().trim();
+  
+  // Handle numbered options first
+  if (input === '1' || input.includes('chat') || input.includes('ask') || input.includes('health question')) {
+    conversationManager.setState(user.phoneNumber, conversationManager.states.CHATTING);
+    return `🤖 **MedConnect AI Chat Started**
+
+Hi ${user.name}! I'm your personal health assistant. I can help with:
+• Symptom analysis
+• Health advice  
+• Medicine questions
+• Emergency guidance
+
+What health question do you have today?
+
+*Type your question or "HOME" to return to main menu*`;
+  }
+  
+  if (input === '2' || input.includes('book') || input.includes('appointment')) {
+    conversationManager.setState(user.phoneNumber, conversationManager.states.BOOKING);
+    return await startBookingProcess(user);
+  }
+  
+  if (input === '3' || input.includes('view') || input.includes('appointments') || input.includes('upcoming')) {
+    conversationManager.setState(user.phoneNumber, conversationManager.states.VIEWING_APPOINTMENTS);
+    return await showUpcomingAppointments(user);
+  }
+  
+  if (input === '4' || input.includes('doctor') || input.includes('list')) {
+    return await listAvailableDoctors();
+  }
+  
+  if (input === '5' || input.includes('tip') || input.includes('health tip')) {
+    return await getHealthTip();
+  }
+  
+  if (input.includes('cancel') && input.includes('appointment')) {
+    conversationManager.setState(user.phoneNumber, conversationManager.states.CANCELLING);
+    return await startCancelProcess(user);
+  }
+  
+  if (input.includes('reschedule')) {
+    conversationManager.setState(user.phoneNumber, conversationManager.states.RESCHEDULING);
+    return await startRescheduleProcess(user);
+  }
+  
+  // If message looks like a health question, start chat
+  if (isHealthQuestion(text)) {
+    conversationManager.setState(user.phoneNumber, conversationManager.states.CHATTING);
+    return await handleHealthChat(text, user);
+  }
+  
+  // Welcome message with options
+  return `🏥 **Welcome to MedConnect AI!**
+
+Hi ${user.name}! I'm your AI health assistant. Here's what I can help with:
+
+1️⃣ **CHAT** - Ask health questions  
+2️⃣ **BOOK** - Schedule appointments  
+3️⃣ **VIEW** - See my appointments  
+4️⃣ **DOCTORS** - List available doctors
+5️⃣ **TIPS** - Get health tips
+❌ **CANCEL** - Cancel appointment  
+🔄 **RESCHEDULE** - Change appointment time  
+🏠 **HOME** - Main menu anytime
+
+*Just type a number (1-5) or keyword! For example:*
+• "1" or "I have a headache" 
+• "2" or "Book appointment"
+• "3" or "View my appointments"
+
+How can I help you today? 😊`;
+}
+
+function isHealthQuestion(text) {
+  const healthKeywords = [
+    'pain', 'ache', 'hurt', 'fever', 'headache', 'cough', 'cold', 'sick', 'tired', 
+    'dizzy', 'nausea', 'stomach', 'chest', 'breathing', 'swollen', 'rash', 'itch',
+    'medicine', 'medication', 'drug', 'pill', 'treatment', 'symptom', 'disease',
+    'diabetes', 'pressure', 'heart', 'blood', 'doctor', 'hospital', 'clinic'
+  ];
+  
+  return healthKeywords.some(keyword => 
+    text.toLowerCase().includes(keyword)
+  );
+}
+
+async function handleChatting(text, user, currentState) {
+  // Check if user wants to switch to booking during chat
+  if (text.toLowerCase().includes('book') || text.toLowerCase().includes('appointment')) {
+    return `🤔 I see you want to book an appointment during our chat. 
+
+Would you like to:
+1. **Continue our health chat** and book later
+2. **Book appointment now** (our chat will be saved)
+
+Type "1" to continue chatting or "book" to start booking.`;
+  }
+  
+  return await handleHealthChat(text, user);
+}
+
+async function handleHealthChat(text, user) {
+  try {
+    logger.info(`🤖 Processing health chat for ${user.phoneNumber}: "${text}"`);
+    
+    // Get conversation context for continuity
+    const context = await getConversationContext(user, 3);
+    
+    // Build AI context
+    const aiContext = {
+      user: {
+        name: user.name,
+        age: user.age,
+        gender: user.gender,
+        location: user.location,
+        medicalHistory: user.medicalHistory || [],
+        currentMedications: user.medications || []
+      },
+      question: text,
+      conversationHistory: context.join('\n'),
+      isUSSD: false,
+      maxLength: 500 // SMS character limit
+    };
+
+    logger.info(`🤖 Sending to AI service with context: ${JSON.stringify(aiContext).substring(0, 200)}...`);
+    
+    const aiResponse = await aiService.generateHealthChatResponse(aiContext);
+    
+    logger.info(`🤖 AI Response received: ${JSON.stringify(aiResponse).substring(0, 200)}...`);
+    
+    // Save health session with unique ID
+    const healthSession = new HealthSession({
+      sessionId: `SMS_CHAT_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId: user._id,
+      phoneNumber: user.phoneNumber,
+      sessionType: 'sms',
+      symptoms: [text],
+      aiAnalysis: aiResponse,
+      recommendations: aiResponse.recommendations || [],
+      urgencyLevel: aiResponse.urgency || 'low',
+      createdAt: new Date()
+    });
+    
+    await healthSession.save();
+    
+    let response = `🤖 **MedConnect AI Doctor:**
+
+${aiResponse.response}`;
+    
+    // Add urgency warning if needed
+    if (aiResponse.urgency === 'high' || aiResponse.urgency === 'emergency') {
+      response += `
+
+🚨 **URGENT WARNING:**
+This seems serious! Please seek immediate medical attention or call emergency services (999).`;
+    } else if (aiResponse.urgency === 'medium' && aiResponse.should_see_doctor) {
+      response += `
+
+💡 **Medical Advice:**
+Consider consulting a healthcare provider for proper evaluation.`;
+    }
+    
+    // Add top recommendations if available
+    if (aiResponse.recommendations && aiResponse.recommendations.length > 0) {
+      response += `
+
+**Quick Tips:**
+• ${aiResponse.recommendations[0]}`;
+      if (aiResponse.recommendations[1]) {
+        response += `
+• ${aiResponse.recommendations[1]}`;
+      }
+    }
+    
+    response += `
+
+**Continue our chat or:**
+💬 Ask another question
+📅 BOOK appointment
+👨‍⚕️ DOCTORS list
+🏠 HOME menu`;
+    
+    return response;
+
+  } catch (error) {
+    logger.error('Health Chat Error:', error);
+    
+    // Enhanced fallback with more helpful guidance
+    return `🤖 **MedConnect AI Doctor:**
+
+I'm having some technical difficulties right now, but I want to help you! 
+
+**For your health concern:**
+• If it's urgent, visit your nearest clinic or call 999
+• For general health questions, try asking again
+• You can also book an appointment with our doctors
+
+**Immediate Help:**
+📞 Emergency: 999
+🏥 Find clinic: Type "DOCTORS"
+📅 Book appointment: Type "BOOK"
+🏠 Main menu: Type "HOME"
+
+Please try your question again - I'm here to help! 💚`;
+  }
+}
+
+// Process conversational SMS based on state
+async function processConversationalSMS(text, user) {
+  try {
+    logger.info(`Processing conversational SMS for ${user.phoneNumber}: ${text}`);
+    
+    const currentState = conversationManager.getState(user.phoneNumber);
+    
+    // Handle exit command
+    if (['exit', 'quit', 'stop', 'end'].includes(text.toLowerCase())) {
+      conversationManager.endConversation(user.phoneNumber);
+      return `👋 Conversation ended. Send any message to start again or use these commands:
 
 📋 HELP - Commands list
 👨‍⚕️ DOCTORS - Available doctors
@@ -58,11 +488,11 @@ async function processConversationalSMS(text, user) {
 💬 CHAT - AI health chat
 
 Have a healthy day! 🏥`;
-  }
+    }
 
-  // Handle menu/help requests
-  if (['help', 'menu', 'commands'].includes(text.toLowerCase())) {
-    return `🏥 **MedConnect AI - Main Menu**
+    // Handle menu/help requests
+    if (['help', 'menu', 'commands'].includes(text.toLowerCase())) {
+      return `🏥 **MedConnect AI - Main Menu**
 
 Choose what you'd like to do:
 1️⃣ Chat with AI Doctor
@@ -78,10 +508,10 @@ Choose what you'd like to do:
 • Type "EXIT" to end conversation
 
 What would you like to do? Just reply with a number or command! 😊`;
-  }
+    }
 
-  // Process based on current state
-  switch (currentState.state) {
+    // Process based on current state
+    switch (currentState.state) {
     case conversationManager.states.INITIAL:
       return await handleInitialState(text, user);
     
@@ -105,6 +535,10 @@ What would you like to do? Just reply with a number or command! 😊`;
     
     default:
       return await handleInitialState(text, user);
+  }
+  } catch (error) {
+    logger.error('Error in processConversationalSMS:', error);
+    return `🤖 I'm having some trouble right now. Please try again or type "help" for assistance.`;
   }
 }
 
@@ -519,21 +953,85 @@ Type "MENU" to return to main options.`;
   }
 }
 
-async function showMyAppointments(user) {
+async function handleViewingAppointments(text, user, currentState) {
+  const lowerText = text.toLowerCase().trim();
+  
+  // Allow navigation from appointment view
+  if (lowerText === 'book' || lowerText === 'new') {
+    conversationManager.setState(user.phoneNumber, conversationManager.states.BOOKING);
+    return await startBookingProcess(user);
+  }
+  
+  if (lowerText.includes('cancel') || lowerText === 'delete') {
+    conversationManager.setState(user.phoneNumber, conversationManager.states.CANCELLING);
+    return await startCancelProcess(user);
+  }
+  
+  if (lowerText.includes('reschedule') || lowerText.includes('change') || lowerText === 'modify') {
+    conversationManager.setState(user.phoneNumber, conversationManager.states.RESCHEDULING);
+    return await startRescheduleProcess(user);
+  }
+  
+  // If it's a number, show specific appointment details
+  const choice = parseInt(text);
+  if (choice >= 1 && choice <= 10) {
+    try {
+      const appointments = await Appointment.find({
+        patientPhone: user.phoneNumber,
+        appointmentDate: { $gte: new Date() }
+      }).sort({ appointmentDate: 1 }).limit(10);
+      
+      if (choice <= appointments.length) {
+        const apt = appointments[choice - 1];
+        return `📋 **Appointment Details**
+
+🆔 **ID:** ${apt.appointmentId}
+👨‍⚕️ **Doctor:** Dr. ${apt.doctorName}
+🏥 **Specialization:** ${apt.specialization}
+📅 **Date:** ${apt.appointmentDate.toLocaleDateString()}
+⏰ **Time:** ${apt.timeSlot}
+💰 **Fee:** KSh ${apt.consultationFee}
+📞 **Doctor Phone:** ${apt.doctorPhone || 'Contact hospital'}
+🏥 **Hospital:** ${apt.hospital || 'MedConnect Partner'}
+
+**Options:**
+📝 RESCHEDULE - Change date/time
+❌ CANCEL - Cancel this appointment
+🏠 HOME - Main menu
+📋 VIEW - Back to appointments list
+
+What would you like to do?`;
+      }
+    } catch (error) {
+      logger.error('Error fetching appointment details:', error);
+    }
+  }
+  
+  // Default behavior - show appointments list again
+  conversationManager.setState(user.phoneNumber, conversationManager.states.INITIAL);
+  return await showUpcomingAppointments(user);
+}
+
+async function showUpcomingAppointments(user) {
   try {
     const appointments = await Appointment.find({
       patientPhone: user.phoneNumber,
-      appointmentDate: { $gte: new Date() }
-    }).sort({ appointmentDate: 1 }).limit(3);
+      appointmentDate: { $gte: new Date() },
+      status: { $ne: 'cancelled' }
+    }).sort({ appointmentDate: 1 }).limit(10);
     
     if (appointments.length === 0) {
       return `📅 **My Appointments**
 
-You have no upcoming appointments.
+You have no upcoming appointments scheduled.
 
-Would you like to book one?
-• Type "BOOK" to start booking
-• Type "MENU" for main options 😊`;
+**What would you like to do?**
+📅 BOOK - Schedule new appointment
+🩺 CHAT - Ask AI doctor
+👨‍⚕️ DOCTORS - See available doctors
+🏠 HOME - Main menu
+
+Type any option to continue! 😊`;
     }
     
     let response = `📅 **My Upcoming Appointments**
@@ -541,26 +1039,45 @@ Would you like to book one?
 `;
     
     appointments.forEach((apt, i) => {
+      const date = new Date(apt.appointmentDate);
+      const isToday = date.toDateString() === new Date().toDateString();
+      const isTomorrow = date.toDateString() === new Date(Date.now() + 86400000).toDateString();
+      
+      let dateDisplay = date.toLocaleDateString();
+      if (isToday) dateDisplay = 'Today';
+      else if (isTomorrow) dateDisplay = 'Tomorrow';
+      
       response += `${i + 1}️⃣ **Dr. ${apt.doctorName}**
-   📅 ${apt.appointmentDate.toLocaleDateString()}
-   ⏰ ${apt.timeSlot}
+   📅 ${dateDisplay} at ${apt.timeSlot}
    🏥 ${apt.specialization}
    🆔 ${apt.appointmentId}
-   💰 KSh ${apt.consultationFee}
 
 `;
     });
     
     response += `**Options:**
-• Type "BOOK" for new appointment
-• Type "CANCEL [ID]" to cancel
-• Type "MENU" for main options`;
+🔢 **Type number** (1-${appointments.length}) for details
+📅 **BOOK** - New appointment
+❌ **CANCEL** - Cancel appointment
+🔄 **RESCHEDULE** - Change appointment
+🏠 **HOME** - Main menu
+
+What would you like to do?`;
     
     return response;
     
   } catch (error) {
     logger.error('Show appointments error:', error);
-    return `❌ Sorry, couldn't load your appointments. Please try again later.`;
+    return `❌ **Error Loading Appointments**
+
+Sorry, I couldn't load your appointments right now.
+
+**Options:**
+🔄 Try again - Type "VIEW"
+📅 Book new - Type "BOOK"
+🏠 Main menu - Type "HOME"
+
+Please try again or contact support if this continues.`;
   }
 }
 
@@ -595,6 +1112,260 @@ async function listDoctors() {
   }
 }
 
+async function listAvailableDoctors() {
+  try {
+    const doctors = await Doctor.find({ isActive: true }).limit(5);
+    
+    if (doctors.length === 0) {
+      return `👨‍⚕️ **Available Doctors**
+
+No doctors currently available. Please try again later.
+
+Type "HOME" to return to main menu or "BOOK" to try booking.`;
+    }
+    
+    let response = `👨‍⚕️ **Available Doctors**
+
+`;
+    
+    doctors.forEach((doctor, index) => {
+      response += `${index + 1}. **Dr. ${doctor.name}**
+   🏥 ${doctor.specialization}
+   📍 ${doctor.location}
+   💰 KSh ${doctor.fee}
+   ⭐ Rating: ${doctor.rating}/5
+
+`;
+    });
+    
+    response += `💬 To book with any doctor, type "BOOK" or reply with the doctor number.
+
+Type "HOME" for main menu.`;
+    
+    return response;
+    
+  } catch (error) {
+    logger.error('List doctors error:', error);
+    return `❌ Sorry, couldn't load doctors. Please try again later.
+
+Type "HOME" for main menu.`;
+  }
+}
+
+async function startCancelProcess(user) {
+  try {
+    const appointments = await Appointment.find({
+      patientPhone: user.phoneNumber,
+      appointmentDate: { $gte: new Date() },
+      status: { $ne: 'cancelled' }
+    }).sort({ appointmentDate: 1 }).limit(5);
+    
+    if (appointments.length === 0) {
+      return `❌ **No Appointments to Cancel**
+
+You don't have any upcoming appointments to cancel.
+
+**Options:**
+📅 BOOK - Schedule new appointment
+📋 VIEW - Check appointment history
+🏠 HOME - Main menu
+
+What would you like to do?`;
+    }
+    
+    let response = `❌ **Cancel Appointment**
+
+Which appointment would you like to cancel?
+
+`;
+    
+    appointments.forEach((apt, i) => {
+      response += `${i + 1}️⃣ **Dr. ${apt.doctorName}**
+   📅 ${apt.appointmentDate.toLocaleDateString()}
+   ⏰ ${apt.timeSlot}
+   🆔 ${apt.appointmentId}
+
+`;
+    });
+    
+    response += `**Instructions:**
+🔢 Type number (1-${appointments.length}) to cancel
+🏠 Type "HOME" for main menu
+📋 Type "VIEW" to see all appointments
+
+Which appointment do you want to cancel?`;
+    
+    conversationManager.setState(user.phoneNumber, conversationManager.states.CANCELLING, { appointments });
+    return response;
+    
+  } catch (error) {
+    logger.error('Cancel process error:', error);
+    return `❌ **Error Loading Appointments**
+
+Sorry, I couldn't load your appointments for cancellation.
+
+**Options:**
+🔄 Try again - Type "CANCEL"
+🏠 Main menu - Type "HOME"
+
+Please try again later.`;
+  }
+}
+
+async function startRescheduleProcess(user) {
+  try {
+    const appointments = await Appointment.find({
+      patientPhone: user.phoneNumber,
+      appointmentDate: { $gte: new Date() },
+      status: { $ne: 'cancelled' }
+    }).sort({ appointmentDate: 1 }).limit(5);
+    
+    if (appointments.length === 0) {
+      return `🔄 **No Appointments to Reschedule**
+
+You don't have any upcoming appointments to reschedule.
+
+**Options:**
+📅 BOOK - Schedule new appointment
+📋 VIEW - Check appointment history
+🏠 HOME - Main menu
+
+What would you like to do?`;
+    }
+    
+    let response = `🔄 **Reschedule Appointment**
+
+Which appointment would you like to reschedule?
+
+`;
+    
+    appointments.forEach((apt, i) => {
+      response += `${i + 1}️⃣ **Dr. ${apt.doctorName}**
+   📅 ${apt.appointmentDate.toLocaleDateString()}
+   ⏰ ${apt.timeSlot}
+   🆔 ${apt.appointmentId}
+
+`;
+    });
+    
+    response += `**Instructions:**
+🔢 Type number (1-${appointments.length}) to reschedule
+🏠 Type "HOME" for main menu
+📋 Type "VIEW" to see all appointments
+
+Which appointment do you want to reschedule?`;
+    
+    conversationManager.setState(user.phoneNumber, conversationManager.states.RESCHEDULING, { appointments });
+    return response;
+    
+  } catch (error) {
+    logger.error('Reschedule process error:', error);
+    return `❌ **Error Loading Appointments**
+
+Sorry, I couldn't load your appointments for rescheduling.
+
+**Options:**
+🔄 Try again - Type "RESCHEDULE"
+🏠 Main menu - Type "HOME"
+
+Please try again later.`;
+  }
+}
+
+async function handleCancelling(text, user, currentState) {
+  const choice = parseInt(text);
+  const appointments = currentState.data?.appointments || [];
+  
+  if (choice >= 1 && choice <= appointments.length) {
+    const aptToCancel = appointments[choice - 1];
+    
+    try {
+      // Cancel the appointment
+      await Appointment.findByIdAndUpdate(aptToCancel._id, {
+        status: 'cancelled',
+        cancelledAt: new Date(),
+        cancelReason: 'Patient request via SMS'
+      });
+      
+      conversationManager.setState(user.phoneNumber, conversationManager.states.INITIAL);
+      
+      return `✅ **Appointment Cancelled Successfully**
+
+🆔 **Cancelled:** ${aptToCancel.appointmentId}
+👨‍⚕️ **Doctor:** Dr. ${aptToCancel.doctorName}
+📅 **Date:** ${aptToCancel.appointmentDate.toLocaleDateString()}
+⏰ **Time:** ${aptToCancel.timeSlot}
+
+**Your appointment has been cancelled and the doctor has been notified.**
+
+**Options:**
+📅 BOOK - Schedule new appointment
+📋 VIEW - See remaining appointments
+🏠 HOME - Main menu
+
+Is there anything else I can help you with?`;
+      
+    } catch (error) {
+      logger.error('Error cancelling appointment:', error);
+      return `❌ **Cancellation Failed**
+
+Sorry, I couldn't cancel your appointment right now. Please try again later or contact support.
+
+**Options:**
+🔄 Try again - Type "CANCEL"
+🏠 Main menu - Type "HOME"`;
+    }
+  }
+  
+  return `❌ **Invalid Selection**
+
+Please type a valid number (1-${appointments.length}) or:
+🏠 HOME - Return to main menu
+📋 VIEW - See all appointments
+
+Which appointment number do you want to cancel?`;
+}
+
+async function handleRescheduling(text, user, currentState) {
+  const choice = parseInt(text);
+  const appointments = currentState.data?.appointments || [];
+  
+  if (choice >= 1 && choice <= appointments.length) {
+    const aptToReschedule = appointments[choice - 1];
+    
+    conversationManager.setState(user.phoneNumber, conversationManager.states.SELECTING_DATE, {
+      rescheduleAppointment: aptToReschedule,
+      selectedDoctor: { doctorId: aptToReschedule.doctorId, name: aptToReschedule.doctorName }
+    });
+    
+    return `🔄 **Reschedule Appointment**
+
+**Current Appointment:**
+👨‍⚕️ Dr. ${aptToReschedule.doctorName}
+📅 ${aptToReschedule.appointmentDate.toLocaleDateString()}
+⏰ ${aptToReschedule.timeSlot}
+
+**Choose New Date:**
+1️⃣ Tomorrow
+2️⃣ Day after tomorrow
+3️⃣ In 3 days
+4️⃣ This weekend
+5️⃣ Next week
+
+🏠 Type "HOME" for main menu
+
+When would you like to reschedule to?`;
+  }
+  
+  return `❌ **Invalid Selection**
+
+Please type a valid number (1-${appointments.length}) or:
+🏠 HOME - Return to main menu
+📋 VIEW - See all appointments
+
+Which appointment number do you want to reschedule?`;
+}
+
 async function getHealthTip() {
   const tips = [
     "💧 Drink at least 8 glasses of water daily to stay hydrated and support your immune system.",
@@ -616,7 +1387,7 @@ ${randomTip}
 **Want more health advice?**
 • Type "CHAT" to ask AI doctor
 • Type "BOOK" to schedule appointment
-• Type "MENU" for main options
+• Type "HOME" for main menu
 
 Stay healthy! 🌟`;
 }

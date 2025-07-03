@@ -249,10 +249,12 @@ Format as a JSON with:
 
   async generateHealthChatResponse(context) {
     try {
-      const { user, question, isUSSD = false, maxLength = 1000 } = context;
+      const { user, question, conversationHistory, isUSSD = false, maxLength = 1000 } = context;
+      
+      logger.info(`🤖 AI Processing question: "${question}" for user: ${user.name || 'Unknown'}`);
       
       const prompt = `
-You are MedConnect AI, a friendly health assistant for Africa. You're chatting with ${user.name || 'a user'} via ${isUSSD ? 'USSD' : 'SMS'}.
+You are MedConnect AI, a knowledgeable and caring health assistant for Africa. You're helping ${user.name || 'a user'} via ${isUSSD ? 'USSD' : 'SMS'}.
 
 User Profile:
 - Name: ${user.name || 'Not provided'}
@@ -262,64 +264,118 @@ User Profile:
 - Medical History: ${user.medicalHistory?.join(', ') || 'None specified'}
 - Current Medications: ${user.currentMedications?.join(', ') || 'None'}
 
-User Question: "${question}"
+${conversationHistory ? `Previous Conversation:
+${conversationHistory}
 
-IMPORTANT GUIDELINES:
-1. Keep response under ${maxLength} characters for ${isUSSD ? 'USSD' : 'SMS'}
-2. Be warm, friendly, and culturally sensitive for African context
-3. Use simple, clear language - avoid medical jargon
-4. Always emphasize this is NOT a replacement for professional medical care
-5. Suggest seeking medical care for serious symptoms
-6. Include practical, affordable advice suitable for Africa
-7. If emergency symptoms, urgently recommend immediate care
-8. Use emojis sparingly and appropriately
+` : ''}User's Question: "${question}"
 
-Please provide a JSON response:
+RESPONSE GUIDELINES:
+1. Maximum ${maxLength} characters for ${isUSSD ? 'USSD' : 'SMS'}
+2. Be helpful, warm, and professional
+3. Use simple language, avoid complex medical terms
+4. ALWAYS include medical disclaimer
+5. For serious symptoms, recommend immediate medical care
+6. Provide practical, affordable advice for African context
+7. Use minimal emojis for clarity
+8. Be direct and actionable
+9. Reference conversation history when relevant
+10. Show empathy and understanding
+
+Respond with ONLY a JSON object in this exact format:
 {
-  "response": "Your friendly, helpful response to the user's question",
+  "response": "Your clear, helpful medical advice response here",
   "urgency": "low/medium/high/emergency",
   "recommendations": [
-    "Practical, affordable recommendations",
-    "When to seek medical care",
-    "Self-care options if appropriate"
+    "First practical recommendation",
+    "Second practical recommendation"
   ],
-  "should_see_doctor": true/false,
-  "emergency_keywords": ["any emergency symptoms detected"]
+  "should_see_doctor": true,
+  "emergency_keywords": []
 }
 
-Examples of good responses:
-- For headache: "I understand you have a headache. This could be from stress, dehydration, or lack of sleep..."
-- For fever: "Fever can be concerning. Let me help you understand when to worry..."
-- For cough: "A cough can have many causes. Based on your symptoms..."
+SAMPLE RESPONSES:
+- Headache: "Headaches can be caused by stress, dehydration, or eye strain. Try drinking water, resting in a quiet dark room, and gentle neck massage..."
+- Fever: "Fever shows your body is fighting infection. If over 38.5°C or lasting 3+ days, see a doctor. Rest, drink fluids, use paracetamol..."
+- Cough: "Persistent cough can indicate respiratory infection. If lasting over 2 weeks or with blood, see a doctor immediately..."
 `;
 
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
       
-      // Parse JSON response
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      logger.info(`🤖 Raw AI Response: ${text.substring(0, 200)}...`);
+      
+      // Clean and extract JSON
+      let cleanText = text.trim();
+      
+      // Remove any markdown code blocks
+      cleanText = cleanText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      
+      // Find JSON object
+      const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+      
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        
-        // Ensure response fits character limit
-        if (parsed.response && parsed.response.length > maxLength) {
-          parsed.response = parsed.response.substring(0, maxLength - 50) + "...";
+        try {
+          const parsed = JSON.parse(jsonMatch[0]);
+          
+          // Validate required fields
+          if (!parsed.response) {
+            throw new Error('Missing response field');
+          }
+          
+          // Ensure response fits character limit
+          if (parsed.response.length > maxLength) {
+            parsed.response = parsed.response.substring(0, maxLength - 50) + "...";
+          }
+          
+          // Set defaults for missing fields
+          parsed.urgency = parsed.urgency || 'medium';
+          parsed.recommendations = parsed.recommendations || [
+            "Monitor your symptoms closely",
+            "Seek medical care if symptoms worsen"
+          ];
+          parsed.should_see_doctor = parsed.should_see_doctor !== false;
+          parsed.emergency_keywords = parsed.emergency_keywords || [];
+          
+          logger.info(`✅ AI Response successfully parsed for: ${question.substring(0, 50)}`);
+          return parsed;
+          
+        } catch (parseError) {
+          logger.error('JSON Parse Error:', parseError);
+          logger.error('Attempted to parse:', jsonMatch[0]);
         }
-        
-        logger.info(`AI Chat Response generated for: ${question.substring(0, 50)}`);
-        return parsed;
       }
       
-      // Fallback response
+      logger.warn('No valid JSON found, using structured fallback');
+      
+      // Enhanced fallback response based on question content
+      const lowerQuestion = question.toLowerCase();
+      let fallbackResponse = "";
+      let urgency = "medium";
+      let recommendations = [];
+      
+      if (lowerQuestion.includes('fever')) {
+        fallbackResponse = "Fever can indicate your body is fighting infection. If it's over 38.5°C, persistent for more than 3 days, or accompanied by severe symptoms, please see a doctor. Rest, drink plenty of fluids, and use paracetamol if needed.";
+        recommendations = ["Take paracetamol for fever reduction", "Drink plenty of fluids", "See a doctor if fever persists over 3 days"];
+      } else if (lowerQuestion.includes('headache') || lowerQuestion.includes('head')) {
+        fallbackResponse = "Headaches can be caused by stress, dehydration, eye strain, or tension. Try resting in a dark quiet room, drinking water, and gentle massage. If severe or persistent, please consult a healthcare provider.";
+        recommendations = ["Rest in a dark, quiet room", "Stay hydrated", "Try gentle head/neck massage"];
+      } else if (lowerQuestion.includes('cough')) {
+        fallbackResponse = "Coughs can be due to infections, allergies, or irritants. If persistent for over 2 weeks, accompanied by blood, or with high fever, see a doctor immediately. Stay hydrated and avoid irritants.";
+        recommendations = ["Stay hydrated with warm liquids", "Avoid smoke and irritants", "See doctor if cough persists over 2 weeks"];
+      } else if (lowerQuestion.includes('chest pain') || lowerQuestion.includes('breathing')) {
+        fallbackResponse = "Chest pain or breathing difficulties can be serious. If you're experiencing severe chest pain, shortness of breath, or difficulty breathing, seek immediate medical attention or call emergency services.";
+        urgency = "high";
+        recommendations = ["Seek immediate medical attention", "Call emergency services if severe", "Don't delay treatment"];
+      } else {
+        fallbackResponse = "I understand your health concern. While I can provide general guidance, this doesn't replace professional medical advice. For accurate diagnosis and treatment, please consult a qualified healthcare provider.";
+        recommendations = ["Consult a healthcare provider", "Monitor symptoms closely", "Seek immediate care if symptoms worsen"];
+      }
+      
       return {
-        response: "I understand your health concern. While I can provide general guidance, please remember that this doesn't replace professional medical advice. For serious symptoms, please visit your nearest health facility.",
-        urgency: "medium",
-        recommendations: [
-          "Monitor your symptoms closely",
-          "Stay hydrated and get adequate rest",
-          "Seek medical care if symptoms worsen"
-        ],
+        response: fallbackResponse,
+        urgency: urgency,
+        recommendations: recommendations,
         should_see_doctor: true,
         emergency_keywords: []
       };
@@ -327,14 +383,14 @@ Examples of good responses:
     } catch (error) {
       logger.error('AI Chat Generation Error:', error);
       
-      // Emergency fallback response
+      // Emergency fallback with specific error handling
       return {
-        response: "I'm having trouble right now, but I want to help. For any serious health concerns, please contact your nearest health facility or call emergency services.",
+        response: "I'm experiencing technical difficulties right now. For immediate health concerns, please visit your nearest health facility or call emergency services. You can also try asking your question again.",
         urgency: "medium",
         recommendations: [
-          "Seek professional medical advice",
-          "Call emergency services if critical",
-          "Stay calm and monitor symptoms"
+          "Try asking your question again",
+          "Visit nearest health facility for serious concerns",
+          "Call emergency services if urgent"
         ],
         should_see_doctor: true,
         emergency_keywords: []

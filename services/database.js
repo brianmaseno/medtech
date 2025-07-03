@@ -185,6 +185,20 @@ const facilitySchema = new mongoose.Schema({
   availability: { type: String, enum: ['available', 'busy', 'closed'], default: 'available' }
 });
 
+// Chat History Schema for conversation memory
+const chatHistorySchema = new mongoose.Schema({
+  phoneNumber: { type: String, required: true },
+  conversationId: { type: String, required: true },
+  messages: [{
+    sender: { type: String, enum: ['user', 'ai'], required: true },
+    message: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now }
+  }],
+  context: { type: String }, // Current conversation context
+  lastActivity: { type: Date, default: Date.now },
+  conversationType: { type: String, enum: ['health', 'booking', 'general'], default: 'general' }
+}, { timestamps: true });
+
 // Health Analytics Schema
 const analyticsSchema = new mongoose.Schema({
   date: { type: Date, required: true },
@@ -213,6 +227,7 @@ const Doctor = mongoose.model('Doctor', doctorSchema);
 const Appointment = mongoose.model('Appointment', appointmentSchema);
 const DeliveryReport = mongoose.model('DeliveryReport', deliveryReportSchema);
 const Facility = mongoose.model('Facility', facilitySchema);
+const ChatHistory = mongoose.model('ChatHistory', chatHistorySchema);
 const Analytics = mongoose.model('Analytics', analyticsSchema);
 
 async function initializeDatabase() {
@@ -433,5 +448,6 @@ module.exports = {
   Appointment,
   DeliveryReport,
   Facility,
+  ChatHistory,
   Analytics
 };

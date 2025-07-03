@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
-const { User, HealthSession, Doctor, Appointment } = require('../services/database');
+const { User, HealthSession, Doctor, Appointment, ChatHistory } = require('../services/database');
 const aiService = require('../services/ai');
 const atService = require('../services/africasTalking');
 const winston = require('winston');
@@ -26,6 +26,11 @@ const STATES = {
   DATE_SELECTION: 'date_selection',
   TIME_SELECTION: 'time_selection',
   APPOINTMENT_CONFIRMATION: 'appointment_confirmation',
+  VIEW_APPOINTMENTS: 'view_appointments',
+  CANCEL_APPOINTMENT: 'cancel_appointment',
+  RESCHEDULE_APPOINTMENT: 'reschedule_appointment',
+  RESCHEDULE_DATE: 'reschedule_date',
+  RESCHEDULE_TIME: 'reschedule_time',
   PROFILE: 'profile',
   HEALTH_TIPS: 'health_tips',
   FIND_FACILITY: 'find_facility',
@@ -95,6 +100,21 @@ router.post('/', async (req, res) => {
         break;
       case STATES.APPOINTMENT_CONFIRMATION:
         response = await handleAppointmentConfirmation(session, lastInput, user);
+        break;
+      case STATES.VIEW_APPOINTMENTS:
+        response = await handleViewAppointments(session, lastInput, user);
+        break;
+      case STATES.CANCEL_APPOINTMENT:
+        response = await handleCancelAppointment(session, lastInput, user);
+        break;
+      case STATES.RESCHEDULE_APPOINTMENT:
+        response = await handleRescheduleAppointment(session, lastInput, user);
+        break;
+      case STATES.RESCHEDULE_DATE:
+        response = await handleRescheduleDate(session, lastInput, user);
+        break;
+      case STATES.RESCHEDULE_TIME:
+        response = await handleRescheduleTime(session, lastInput, user);
         break;
       case STATES.PROFILE:
         response = await handleProfile(session, lastInput, user);
@@ -273,9 +293,9 @@ async function processSymptomsWithAI(session, user) {
     if (analysis.success) {
       const { condition, urgency, recommendations } = analysis.analysis;
       
-      // Save health session
+      // Save health session with unique ID
       const healthSession = new HealthSession({
-        sessionId: session.sessionId,
+        sessionId: `${session.sessionId}_symptoms_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         phoneNumber: session.phoneNumber,
         sessionType: 'ussd',
         symptoms: session.data.symptoms,
@@ -393,44 +413,18 @@ async function handleAppointment(session, input, user) {
       
     case '2':
       // View appointments
-      try {
-        const appointments = await Appointment.find({ 
-          patientPhone: user.phoneNumber,
-          appointmentDate: { $gte: new Date() }
-        }).sort({ appointmentDate: 1 }).limit(5);
-        
-        if (appointments.length === 0) {
-          return `END � No upcoming appointments found.
-
-Use option 1 to book a new appointment.`;
-        }
-        
-        let appointmentList = `END � UPCOMING APPOINTMENTS:\n\n`;
-        appointments.forEach((apt, index) => {
-          appointmentList += `${index + 1}. Dr. ${apt.doctorName}
-   📅 ${apt.appointmentDate.toLocaleDateString()}
-   ⏰ ${apt.timeSlot}
-   🏥 ${apt.specialization}
-   🆔 ${apt.appointmentId}\n\n`;
-        });
-        
-        return appointmentList + `📱 Full details sent via SMS`;
-        
-      } catch (error) {
-        logger.error('Error fetching appointments:', error);
-        return `END ❌ Unable to fetch appointments. Please try again later.`;
-      }
+      session.state = STATES.VIEW_APPOINTMENTS;
+      return await handleViewAppointments(session, '', user);
       
     case '3':
-      return `END 📞 APPOINTMENT SUPPORT
-
-For assistance with appointments:
-• Call: +254700000000  
-• WhatsApp: +254700000000
-• Email: appointments@medconnect.ke
-• SMS: "HELP" to this number
-
-Operating Hours: 8AM - 8PM (Mon-Sat)`;
+      // Cancel appointment
+      session.state = STATES.CANCEL_APPOINTMENT;
+      return await handleCancelAppointment(session, '', user);
+      
+    case '4':
+      // Reschedule appointment
+      session.state = STATES.RESCHEDULE_APPOINTMENT;
+      return await handleRescheduleAppointment(session, '', user);
       
     case '0':
       session.state = STATES.MAIN_MENU;
@@ -442,7 +436,8 @@ Choose an option:
 
 1. Book new appointment
 2. View my appointments  
-3. Appointment support
+3. Cancel appointment
+4. Reschedule appointment
 
 0. Back to main menu`;
   }
@@ -847,14 +842,13 @@ Try asking about:
 Type any health question or:
 0. Back to main menu
 9. Start fresh conversation`;
-      
-    default:
-      // User entered a health question
-      session.state = STATES.AI_CHAT_INPUT;
-      session.data.aiQuestion = input;
-      return await processAIHealthQuestion(session, input, user);
+      default:
+        // User entered a health question directly
+        session.state = STATES.AI_CHAT_INPUT;
+        session.data.aiQuestion = input;
+        return await processAIHealthQuestion(session, input, user);
+    }
   }
-}
 
 async function handleAIChatInput(session, input, user) {
   if (input === '0') {
@@ -871,20 +865,19 @@ async function handleAIChatInput(session, input, user) {
   // Handle menu options after AI response
   switch (input) {
     case '1':
-      // Ask another question
-      return `CON 🤖 Ask Another Question
+      // Ask another question - stay in AI_CHAT_INPUT mode to accept direct questions
+      session.state = STATES.AI_CHAT_INPUT;
+      return `CON 🤖 Continue Our Health Chat
 
-What else would you like to know about your health?
+What else would you like to know?
 
-Examples:
-• "How to prevent this condition?"
-• "What foods should I avoid?"  
-• "When should I see a doctor?"
-• "Are there home remedies?"
+You can ask about:
+• Symptoms or conditions
+• Medications & treatments
+• Health tips & prevention
+• When to see a doctor
 
-Type your question or:
-0. Main menu
-9. Back to chat menu`;
+Just type your question directly:`;
       
     case '2':
       // Find nearby clinics
@@ -901,20 +894,59 @@ Based on our chat, here are options:
       
     case '3':
       // Get more health tips
-      session.state = STATES.HEALTH_TIPS;
-      return await handleHealthTips(session, '', user);
+      return `CON 🏥 HEALTH TIPS
+
+Daily Health Tips:
+• Drink 8 glasses of water daily
+• Exercise for 30 minutes
+• Eat fruits and vegetables
+• Sleep 7-8 hours nightly
+• Wash hands frequently
+
+1. Ask specific health question
+2. Find health facility
+0. Main menu`;
       
     default:
-      // User entered a new health question
+      // If user types anything else, treat it as a new health question
+      session.data.aiQuestion = input;
       return await processAIHealthQuestion(session, input, user);
   }
 }
 
 async function processAIHealthQuestion(session, question, user) {
   try {
-    logger.info(`AI Chat Request from ${user.phoneNumber}: ${question}`);
+    logger.info(`🤖 USSD AI Chat Request from ${user.phoneNumber}: ${question}`);
     
-    // Build context for the AI
+    // Get conversation history for context
+    let conversationId = `ussd_${user.phoneNumber}`;
+    let chatHistory = await ChatHistory.findOne({ 
+      phoneNumber: user.phoneNumber, 
+      conversationId: conversationId 
+    });
+    
+    if (!chatHistory) {
+      chatHistory = new ChatHistory({
+        phoneNumber: user.phoneNumber,
+        conversationId: conversationId,
+        messages: [],
+        context: 'USSD AI Chat',
+        conversationType: 'health'
+      });
+    }
+    
+    // Add user message to history
+    chatHistory.messages.push({
+      sender: 'user',
+      message: question,
+      timestamp: new Date()
+    });
+    
+    // Build context for the AI with conversation history (last 3 messages)
+    const conversationContext = chatHistory.messages.slice(-6).map(msg => 
+      `${msg.sender}: ${msg.message}`
+    ).join('\n');
+    
     const context = {
       user: {
         name: user.name,
@@ -925,16 +957,32 @@ async function processAIHealthQuestion(session, question, user) {
         currentMedications: user.medications || []
       },
       question: question,
+      conversationHistory: conversationContext,
       isUSSD: true,
       maxLength: 160 // USSD character limit
     };
 
+    logger.info(`🤖 USSD Calling AI service with context: ${JSON.stringify(context).substring(0, 150)}...`);
+
     // Get AI response
     const aiResponse = await aiService.generateHealthChatResponse(context);
     
-    // Log the interaction
+    logger.info(`🤖 USSD AI Response: ${JSON.stringify(aiResponse).substring(0, 150)}...`);
+    
+    // Add AI response to history
+    chatHistory.messages.push({
+      sender: 'ai',
+      message: aiResponse.response || 'I understand your concern.',
+      timestamp: new Date()
+    });
+    
+    // Update last activity
+    chatHistory.lastActivity = new Date();
+    await chatHistory.save();
+    
+    // Log the interaction with unique session ID
     const healthSession = new HealthSession({
-      sessionId: session.sessionId,
+      sessionId: `${session.sessionId}_ussd_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       userId: user._id,
       phoneNumber: user.phoneNumber,
       sessionType: 'ussd',
@@ -950,24 +998,20 @@ async function processAIHealthQuestion(session, question, user) {
     // Format response for USSD
     let response = `CON 🤖 MedConnect AI:
 
-${aiResponse.response || aiResponse.analysis || 'I understand your concern. Let me help you.'}
+${aiResponse.response || 'I understand your concern. Let me help you.'}`;
 
-`;
-
-    // Add recommendations if available
-    if (aiResponse.recommendations && aiResponse.recommendations.length > 0) {
-      response += `💡 Quick Tips:
-`;
-      aiResponse.recommendations.slice(0, 2).forEach((rec, index) => {
-        response += `${index + 1}. ${rec}
-`;
-      });
-    }
-
-    // Add urgency warning if needed
+    // Add urgency warning if needed - but keep it short for USSD
     if (aiResponse.urgency === 'high' || aiResponse.urgency === 'emergency') {
       response += `
-⚠️ IMPORTANT: Consider seeking immediate medical attention!`;
+
+⚠️ URGENT: Seek immediate medical care!`;
+    }
+
+    // Add one key recommendation if available
+    if (aiResponse.recommendations && aiResponse.recommendations.length > 0) {
+      response += `
+
+💡 Tip: ${aiResponse.recommendations[0].substring(0, 80)}`;
     }
 
     response += `
@@ -981,21 +1025,433 @@ Options:
     return response;
 
   } catch (error) {
-    logger.error('AI Chat Error:', error);
+    logger.error('USSD AI Chat Error:', error);
     
-    return `CON 🤖 Sorry, I'm having trouble right now.
+    // Enhanced fallback for USSD
+    const healthKeywords = ['fever', 'headache', 'cough', 'pain', 'chest', 'breathing'];
+    const hasHealthKeyword = healthKeywords.some(keyword => question.toLowerCase().includes(keyword));
+    
+    let fallbackResponse = `CON 🤖 I'm having trouble right now.`;
+    
+    if (hasHealthKeyword) {
+      if (question.toLowerCase().includes('fever')) {
+        fallbackResponse += `
 
-Let me give you some general advice:
-• For fever: Rest, drink fluids, take paracetamol
-• For pain: Apply cold/warm compress
-• For serious symptoms: Visit nearest clinic
+For fever: Rest, drink fluids, use paracetamol. See doctor if over 38.5°C or persists 3+ days.`;
+      } else if (question.toLowerCase().includes('headache')) {
+        fallbackResponse += `
 
-📱 You can also send SMS with your question!
+For headache: Rest in dark room, drink water, gentle massage. See doctor if severe.`;
+      } else if (question.toLowerCase().includes('cough')) {
+        fallbackResponse += `
+
+For cough: Stay hydrated, avoid irritants. See doctor if persists 2+ weeks.`;
+      } else {
+        fallbackResponse += `
+
+For serious symptoms: Visit nearest clinic or call emergency services.`;
+      }
+    } else {
+      fallbackResponse += `
+
+Try asking your question differently or visit nearest health facility for urgent concerns.`;
+    }
+    
+    fallbackResponse += `
 
 Options:
 1. Try again
 2. Emergency contacts
 0. Main menu`;
+
+    return fallbackResponse;
+  }
+}
+
+// Appointment Management Functions
+async function handleViewAppointments(session, input, user) {
+  if (input === '0') {
+    session.state = STATES.MAIN_MENU;
+    return await showMainMenu(session, user);
+  }
+  
+  try {
+    const appointments = await Appointment.find({ 
+      patientPhone: user.phoneNumber,
+      appointmentDate: { $gte: new Date() }
+    }).sort({ appointmentDate: 1 }).limit(5);
+    
+    if (appointments.length === 0) {
+      return `CON 📅 No upcoming appointments found.
+
+1. Book new appointment
+0. Back to main menu`;
+    }
+    
+    let appointmentList = `CON 📅 UPCOMING APPOINTMENTS:
+
+`;
+    appointments.forEach((apt, index) => {
+      appointmentList += `${index + 1}. Dr. ${apt.doctorName}
+   📅 ${apt.appointmentDate.toLocaleDateString()}
+   ⏰ ${apt.timeSlot}
+   🏥 ${apt.specialization}
+
+`;
+    });
+    
+    if (input && input !== '0') {
+      const selectedIndex = parseInt(input) - 1;
+      if (selectedIndex >= 0 && selectedIndex < appointments.length) {
+        const apt = appointments[selectedIndex];
+        return `END 📋 APPOINTMENT DETAILS:
+
+👨‍⚕️ Doctor: Dr. ${apt.doctorName}
+🏥 Specialization: ${apt.specialization}
+📅 Date: ${apt.appointmentDate.toLocaleDateString()}
+⏰ Time: ${apt.timeSlot}
+🆔 ID: ${apt.appointmentId}
+💰 Fee: KSh ${apt.fee}
+📍 Location: ${apt.location}
+
+📱 Details sent via SMS`;
+      }
+    }
+    
+    appointmentList += `Select appointment for details:
+0. Back to main menu`;
+    
+    return appointmentList;
+    
+  } catch (error) {
+    logger.error('Error fetching appointments:', error);
+    return `CON ❌ Unable to fetch appointments.
+
+1. Try again
+0. Main menu`;
+  }
+}
+
+async function handleCancelAppointment(session, input, user) {
+  if (input === '0') {
+    session.state = STATES.MAIN_MENU;
+    return await showMainMenu(session, user);
+  }
+  
+  try {
+    const appointments = await Appointment.find({ 
+      patientPhone: user.phoneNumber,
+      appointmentDate: { $gte: new Date() },
+      status: 'confirmed'
+    }).sort({ appointmentDate: 1 }).limit(5);
+    
+    if (appointments.length === 0) {
+      return `CON ❌ No appointments to cancel.
+
+1. Book new appointment
+0. Back to main menu`;
+    }
+    
+    if (!input) {
+      let appointmentList = `CON 🗑️ CANCEL APPOINTMENT
+Select appointment to cancel:
+
+`;
+      appointments.forEach((apt, index) => {
+        appointmentList += `${index + 1}. Dr. ${apt.doctorName}
+   📅 ${apt.appointmentDate.toLocaleDateString()}
+   ⏰ ${apt.timeSlot}
+
+`;
+      });
+      
+      appointmentList += `0. Back to main menu`;
+      return appointmentList;
+    }
+    
+    const selectedIndex = parseInt(input) - 1;
+    if (selectedIndex >= 0 && selectedIndex < appointments.length) {
+      const apt = appointments[selectedIndex];
+      
+      if (!session.data.confirmCancel) {
+        session.data.selectedAppointment = apt._id;
+        session.data.confirmCancel = true;
+        
+        return `CON ⚠️ CONFIRM CANCELLATION:
+
+👨‍⚕️ Dr. ${apt.doctorName}
+📅 ${apt.appointmentDate.toLocaleDateString()}
+⏰ ${apt.timeSlot}
+
+1. Yes, cancel appointment
+2. No, keep appointment
+0. Back to main menu`;
+      }
+      
+      if (input === '1') {
+        // Confirm cancellation
+        await Appointment.findByIdAndUpdate(session.data.selectedAppointment, {
+          status: 'cancelled',
+          cancelledAt: new Date(),
+          cancelReason: 'Patient request via USSD'
+        });
+        
+        // Send SMS confirmation
+        const smsMessage = `Appointment cancelled successfully.\n\nDr. ${apt.doctorName}\n📅 ${apt.appointmentDate.toLocaleDateString()}\n⏰ ${apt.timeSlot}\n\nRebook anytime via *384*57000#`;
+        
+        try {
+          await atService.sendSMS(user.phoneNumber, smsMessage);
+        } catch (smsError) {
+          logger.error('SMS Error:', smsError);
+        }
+        
+        return `END ✅ APPOINTMENT CANCELLED
+
+Dr. ${apt.doctorName}
+📅 ${apt.appointmentDate.toLocaleDateString()}
+⏰ ${apt.timeSlot}
+
+Confirmation sent via SMS.
+You can book a new appointment anytime.`;
+      }
+      
+      if (input === '2') {
+        return `CON 📅 Appointment kept.
+
+1. View appointments
+2. Book new appointment
+0. Main menu`;
+      }
+    }
+    
+    return `CON Invalid selection.
+
+1. Try again
+0. Main menu`;
+    
+  } catch (error) {
+    logger.error('Error cancelling appointment:', error);
+    return `CON ❌ Unable to cancel appointment.
+
+1. Try again
+0. Main menu`;
+  }
+}
+
+async function handleRescheduleAppointment(session, input, user) {
+  if (input === '0') {
+    session.state = STATES.MAIN_MENU;
+    return await showMainMenu(session, user);
+  }
+  
+  try {
+    const appointments = await Appointment.find({ 
+      patientPhone: user.phoneNumber,
+      appointmentDate: { $gte: new Date() },
+      status: 'confirmed'
+    }).sort({ appointmentDate: 1 }).limit(5);
+    
+    if (appointments.length === 0) {
+      return `CON ❌ No appointments to reschedule.
+
+1. Book new appointment
+0. Back to main menu`;
+    }
+    
+    if (!input) {
+      let appointmentList = `CON 🔄 RESCHEDULE APPOINTMENT
+Select appointment:
+
+`;
+      appointments.forEach((apt, index) => {
+        appointmentList += `${index + 1}. Dr. ${apt.doctorName}
+   📅 ${apt.appointmentDate.toLocaleDateString()}
+   ⏰ ${apt.timeSlot}
+
+`;
+      });
+      
+      appointmentList += `0. Back to main menu`;
+      return appointmentList;
+    }
+    
+    const selectedIndex = parseInt(input) - 1;
+    if (selectedIndex >= 0 && selectedIndex < appointments.length) {
+      const apt = appointments[selectedIndex];
+      session.data.rescheduleAppointment = apt._id;
+      session.data.selectedDoctor = apt.doctorId;
+      session.state = STATES.RESCHEDULE_DATE;
+      
+      return `CON 🔄 RESCHEDULE APPOINTMENT:
+Dr. ${apt.doctorName}
+
+Select new date:
+1. Tomorrow
+2. In 2 days
+3. In 3 days
+4. Next week
+5. Choose specific date
+
+0. Back to main menu`;
+    }
+    
+    return `CON Invalid selection.
+
+1. Try again
+0. Main menu`;
+    
+  } catch (error) {
+    logger.error('Error rescheduling appointment:', error);
+    return `CON ❌ Unable to reschedule appointment.
+
+1. Try again
+0. Main menu`;
+  }
+}
+
+async function handleRescheduleDate(session, input, user) {
+  if (input === '0') {
+    session.state = STATES.MAIN_MENU;
+    return await showMainMenu(session, user);
+  }
+  
+  let selectedDate = new Date();
+  
+  switch (input) {
+    case '1':
+      selectedDate.setDate(selectedDate.getDate() + 1);
+      break;
+    case '2':
+      selectedDate.setDate(selectedDate.getDate() + 2);
+      break;
+    case '3':
+      selectedDate.setDate(selectedDate.getDate() + 3);
+      break;
+    case '4':
+      selectedDate.setDate(selectedDate.getDate() + 7);
+      break;
+    case '5':
+      return `CON 📅 CHOOSE DATE:
+Enter date (DD/MM/YYYY):
+
+Example: 25/12/2024
+
+0. Back to main menu`;
+    default:
+      // Handle custom date input
+      if (input.includes('/')) {
+        try {
+          const [day, month, year] = input.split('/');
+          selectedDate = new Date(year, month - 1, day);
+          
+          if (selectedDate < new Date()) {
+            return `CON ❌ Date must be in the future.
+
+Try again:
+0. Back to main menu`;
+          }
+        } catch (error) {
+          return `CON ❌ Invalid date format.
+Use DD/MM/YYYY
+
+Try again:
+0. Back to main menu`;
+        }
+      } else {
+        return `CON Invalid option.
+
+1. Tomorrow
+2. In 2 days
+3. In 3 days
+4. Next week
+5. Choose specific date
+0. Main menu`;
+      }
+  }
+  
+  session.data.rescheduleDate = selectedDate;
+  session.state = STATES.RESCHEDULE_TIME;
+  
+  return `CON ⏰ SELECT TIME SLOT:
+📅 ${selectedDate.toLocaleDateString()}
+
+1. 09:00 AM
+2. 11:00 AM
+3. 02:00 PM
+4. 04:00 PM
+5. 05:00 PM
+
+0. Back to main menu`;
+}
+
+async function handleRescheduleTime(session, input, user) {
+  if (input === '0') {
+    session.state = STATES.MAIN_MENU;
+    return await showMainMenu(session, user);
+  }
+  
+  const timeSlots = {
+    '1': '09:00 AM',
+    '2': '11:00 AM', 
+    '3': '02:00 PM',
+    '4': '04:00 PM',
+    '5': '05:00 PM'
+  };
+  
+  const selectedTime = timeSlots[input];
+  
+  if (!selectedTime) {
+    return `CON Invalid time selection.
+
+1. 09:00 AM
+2. 11:00 AM
+3. 02:00 PM
+4. 04:00 PM
+5. 05:00 PM
+0. Main menu`;
+  }
+  
+  try {
+    // Update the appointment
+    const oldAppointment = await Appointment.findById(session.data.rescheduleAppointment);
+    
+    await Appointment.findByIdAndUpdate(session.data.rescheduleAppointment, {
+      appointmentDate: session.data.rescheduleDate,
+      timeSlot: selectedTime,
+      status: 'confirmed',
+      rescheduledAt: new Date(),
+      rescheduleReason: 'Patient request via USSD'
+    });
+    
+    const updatedAppointment = await Appointment.findById(session.data.rescheduleAppointment);
+    
+    // Send SMS confirmation
+    const smsMessage = `Appointment rescheduled successfully!\n\n👨‍⚕️ Dr. ${updatedAppointment.doctorName}\n📅 ${updatedAppointment.appointmentDate.toLocaleDateString()}\n⏰ ${updatedAppointment.timeSlot}\n🏥 ${updatedAppointment.specialization}\n\nPrevious: ${oldAppointment.appointmentDate.toLocaleDateString()} ${oldAppointment.timeSlot}\n\nThank you for using MedConnect AI!`;
+    
+    try {
+      await atService.sendSMS(user.phoneNumber, smsMessage);
+    } catch (smsError) {
+      logger.error('SMS Error:', smsError);
+    }
+    
+    return `END ✅ APPOINTMENT RESCHEDULED!
+
+👨‍⚕️ Dr. ${updatedAppointment.doctorName}
+📅 ${updatedAppointment.appointmentDate.toLocaleDateString()}
+⏰ ${updatedAppointment.timeSlot}
+🏥 ${updatedAppointment.specialization}
+
+Previous appointment:
+📅 ${oldAppointment.appointmentDate.toLocaleDateString()}
+⏰ ${oldAppointment.timeSlot}
+
+Confirmation sent via SMS.`;
+    
+  } catch (error) {
+    logger.error('Error rescheduling appointment:', error);
+    return `END ❌ Unable to reschedule appointment.
+
+Please try again later or call our support line.`;
   }
 }
 
